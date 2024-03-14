@@ -1,0 +1,48 @@
+COMMENT = _{"//" ~ (!"\n" ~ ANY)* }
+WHITESPACE = _{" " | "\t" | "\n" | "\r"}
+
+IDENT = @{(ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
+FIELD_TYPE = {"int" | "float" | "string" | "bool" | "char"}
+LIST = {"[" ~ "]"}
+SEMICOLON = _{";"}
+STRUCT = _{"struct"}
+
+FIELD = {(FIELD_TYPE | IDENT) ~ IDENT ~ LIST? ~ SEMICOLON}
+
+PROTOCOL = _{"protocol"}
+PROTOCOL_C = {"C"}
+PROTOCOL_TYPST = {"Typst"}
+PROTOCOL_TYPE = {PROTOCOL_C | PROTOCOL_TYPST}
+
+BLOCK_START = _{"{"}
+BLOCK_END = _{"}"}
+BLOCK = {BLOCK_START ~ FIELD* ~ BLOCK_END}
+
+
+/*
+A struct look like this:
+struct exempleStruct {
+	int exempleField;
+}
+You can't create nested struct
+*/
+STRUCT_DEF = {
+	STRUCT ~ IDENT ~ BLOCK
+}
+
+/*
+A protocol look like this:
+protocol C exempleProtocol {
+	int exempleField;
+}
+and you can put struct in it
+*/
+PROTOCOL_DEF = {
+	PROTOCOL ~ PROTOCOL_TYPE ~ IDENT ~ BLOCK
+}
+
+DOCUMENT = {(STRUCT_DEF | PROTOCOL_DEF)*}
+
+protocol = _{
+	SOI ~ (DOCUMENT) ~ EOI
+}
