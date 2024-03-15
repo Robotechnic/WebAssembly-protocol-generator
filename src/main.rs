@@ -1,4 +1,4 @@
-use wasmpg::{generator::cgenerator::generate_protocol, parser::ProtocolParser};
+use wasmpg::{generator::{cgenerator, typstgenerator}, parser::ProtocolParser};
 
 
 fn main() {
@@ -6,9 +6,17 @@ fn main() {
     let result = ProtocolParser::parse_protocol(file.as_str());
 	match result {
 		Ok(protocol) => {
-			match generate_protocol(".", protocol) {
+			match cgenerator::generate_protocol(".", &protocol) {
 				Ok(_) => {
-					println!("Generated protocol");
+					println!("Generated C protocol");
+				}
+				Err(e) => {
+					println!("Error: {:?}", e);
+				}
+			}
+			match typstgenerator::generate_protocol(".", &protocol) {
+				Ok(_) => {
+					println!("Generated Typst protocol");
 				}
 				Err(e) => {
 					println!("Error: {:?}", e);

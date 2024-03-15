@@ -106,26 +106,26 @@ int big_endian_encode(int value, uint8_t *buffer, int size) {
 }
 ";
 
-fn generate_header(file: &mut fs::File) -> Result<(), std::io::Error> {
-    file.write(HEADER.as_bytes())?;
+fn generate_header(h_file: &mut fs::File) -> Result<(), std::io::Error> {
+    h_file.write(HEADER.as_bytes())?;
     Ok(())
 }
 
-fn generate_footer(file: &mut fs::File) -> Result<(), std::io::Error> {
-    file.write(b"#endif\n")?;
+fn generate_footer(h_file: &mut fs::File) -> Result<(), std::io::Error> {
+    h_file.write(b"#endif\n")?;
     Ok(())
 }
 
-fn generate_struct(file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
-    file.write(b"typedef struct {\n")?;
+fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
+    h_file.write(b"typedef struct {\n")?;
     for field in s.fields() {
-        file.write(format!("    {} {};\n", field.1.to_c(), field.0).as_bytes())?;
+        h_file.write(format!("    {} {};\n", field.1.to_c(), field.0).as_bytes())?;
         if let Types::Array(_) = field.1 {
-            file.write(format!("    size_t {}_len;\n", field.0).as_bytes())?;
+            h_file.write(format!("    size_t {}_len;\n", field.0).as_bytes())?;
         }
     }
-    file.write(b"} ")?;
-    file.write(format!("{};\n", name).as_bytes())?;
+    h_file.write(b"} ")?;
+    h_file.write(format!("{};\n", name).as_bytes())?;
     Ok(())
 }
 
@@ -396,7 +396,7 @@ fn generate_struct_serialisation(
 	Ok(())
 }
 
-pub fn generate(
+fn generate(
 	h_file: &mut fs::File,
     c_file: &mut fs::File,
     name: &str,
@@ -413,7 +413,7 @@ pub fn generate(
 	Ok(())
 }
 
-pub fn generate_protocol(path: &str, p: Protocol) -> Result<(), std::io::Error> {
+pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error> {
     let c_path = format!("{}/protocol.c", path);
     let h_path = format!("{}/protocol.h", path);
     let mut c_file = fs::File::create(c_path)?;
