@@ -1,4 +1,4 @@
-use wasmpg::parser::ProtocolParser;
+use wasmpg::{generator::cgenerator::generate_protocol, parser::ProtocolParser};
 
 
 fn main() {
@@ -6,7 +6,14 @@ fn main() {
     let result = ProtocolParser::parse_protocol(file.as_str());
 	match result {
 		Ok(protocol) => {
-			println!("{:?}", protocol);
+			match generate_protocol(".", protocol) {
+				Ok(_) => {
+					println!("Generated protocol");
+				}
+				Err(e) => {
+					println!("Error: {:?}", e);
+				}
+			}
 		}
 		Err(e) => {
 			println!("Error: {:?}", e);

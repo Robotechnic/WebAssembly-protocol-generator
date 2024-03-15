@@ -6,3 +6,9 @@ struct Test {
 protocol C coucou {
 	Test tests[];
 }
+
+protocol Typst labels {
+	Test hello;
+	float widths[];
+	float heights[];
+}
