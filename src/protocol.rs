@@ -31,35 +31,35 @@ impl<'a> Protocol<'a> {
                 Types::Struct(name) => {
                     self.set_struct_encoding_type(name, &protocol);
                 }
-				Types::Array(t) => {
-					if let Types::Struct(name) = t.as_ref() {
-						self.set_struct_encoding_type(name, &protocol);
-					}
-				}
-				_ => {}
+                Types::Array(t) => {
+                    if let Types::Struct(name) = t.as_ref() {
+                        self.set_struct_encoding_type(name, &protocol);
+                    }
+                }
+                _ => {}
             }
         }
         self.protocols.insert(name, protocol);
     }
 
     fn set_struct_encoding_type(&mut self, name: &String, protocol: &Struct<'_>) {
-		if !self.structs.contains_key(name.as_str()) {
-			panic!("Protocol contain an undefined struct field");
-		}
-		if let StructType::Protocol(t) = protocol.get_type() {
-			let s = self.structs.get_mut(name.as_str()).unwrap();
-			match t {
-				ProtocolType::C => {
-					s.encoder = true;
-				}
-				ProtocolType::Typst => {
-					s.decoder = true;
-				}
-			}
-		}
-	}
-	
-	pub fn has_protocol(&self, name: &str) -> bool {
+        if !self.structs.contains_key(name.as_str()) {
+            panic!("Protocol contain an undefined struct field");
+        }
+        if let StructType::Protocol(t) = protocol.get_type() {
+            let s = self.structs.get_mut(name.as_str()).unwrap();
+            match t {
+                ProtocolType::C => {
+                    s.encoder = true;
+                }
+                ProtocolType::Typst => {
+                    s.decoder = true;
+                }
+            }
+        }
+    }
+
+    pub fn has_protocol(&self, name: &str) -> bool {
         self.protocols.contains_key(name)
     }
 

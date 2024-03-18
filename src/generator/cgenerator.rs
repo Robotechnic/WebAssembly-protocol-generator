@@ -151,11 +151,11 @@ fn generate_struct_deserialisation_function(
 ) -> Result<(), std::io::Error> {
     generate_struct_deserialisation_signature(file, name)?;
     file.write(b" {\n")?;
-	if let StructType::Struct = s.get_type() {
-		file.write(b"	size_t __buffer_offset = 0;\n")?;
-	} else {
-    	file.write(b"    INIT_BUFFER_UNPACK(buffer_len)\n")?;
-	}
+    if let StructType::Struct = s.get_type() {
+        file.write(b"	size_t __buffer_offset = 0;\n")?;
+    } else {
+        file.write(b"    INIT_BUFFER_UNPACK(buffer_len)\n")?;
+    }
     file.write(format!("    {} result;\n", name).as_bytes())?;
     for field in s.fields() {
         println!("{:?}", field);
@@ -169,9 +169,9 @@ fn generate_struct_deserialisation_function(
             Types::String => {
                 file.write(format!("    NEXT_STR(result.{})\n", field.0).as_bytes())?;
             }
-			Types::Char => {
-				file.write(format!("    NEXT_CHAR(result.{})\n", field.0).as_bytes())?;
-			}
+            Types::Char => {
+                file.write(format!("    NEXT_CHAR(result.{})\n", field.0).as_bytes())?;
+            }
             Types::Struct(name) => {
                 file.write(format!("    result.{} = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
             }
@@ -199,11 +199,11 @@ fn generate_struct_deserialisation_function(
                             format!("        NEXT_INT(result.{}[i])\n", field.0).as_bytes(),
                         )?;
                     }
-					Types::Char => {
-						file.write(
-							format!("        NEXT_CHAR(result.{}[i])\n", field.0).as_bytes(),
-						)?;
-					}
+                    Types::Char => {
+                        file.write(
+                            format!("        NEXT_CHAR(result.{}[i])\n", field.0).as_bytes(),
+                        )?;
+                    }
                     Types::Float => {
                         file.write(
                             format!("        NEXT_FLOAT(result.{}[i])\n", field.0).as_bytes(),
@@ -218,8 +218,8 @@ fn generate_struct_deserialisation_function(
                         file.write(format!("        result.{}[i] = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
                     }
                     Types::Array(_) => {
-						unimplemented!("Array of arrays not supported");
-					}
+                        unimplemented!("Array of arrays not supported");
+                    }
                 }
                 file.write(b"    }\n")?;
             }
@@ -239,9 +239,9 @@ fn generate_struct_deserialisation(
     name: &str,
     s: &Struct,
 ) -> Result<(), std::io::Error> {
-	let protocol = if let StructType::Protocol(_) = s.get_type() {
-		generate_struct_deserialisation_signature(h_file, name)?;
-		h_file.write(b";\n")?;
+    let protocol = if let StructType::Protocol(_) = s.get_type() {
+        generate_struct_deserialisation_signature(h_file, name)?;
+        h_file.write(b";\n")?;
         true
     } else {
         false
@@ -250,167 +250,175 @@ fn generate_struct_deserialisation(
     Ok(())
 }
 
-fn generate_size_function_signature(c_file: &mut fs::File, name: &str) -> Result<(), std::io::Error> {
-	c_file.write(format!("size_t {}_size(const {} *s)", name, name).as_bytes())?;
-	Ok(())
+fn generate_size_function_signature(
+    c_file: &mut fs::File,
+    name: &str,
+) -> Result<(), std::io::Error> {
+    c_file.write(format!("size_t {}_size(const {} *s)", name, name).as_bytes())?;
+    Ok(())
 }
 
-fn generate_size_function(c_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
-	generate_size_function_signature(c_file, name)?;
-	c_file.write(b"{\n	return ")?;
-	let mut first = true;
-	for field in s.fields() {
-		if !first {
-			c_file.write(b" + ")?;
-		}
-		first = false;
-		match field.1 {
-			Types::Bool | Types::Int | Types::Float => {
-				c_file.write(format!("TYPST_INT_SIZE").as_bytes())?;
-			}
-			Types::String => {
-				c_file.write(format!("strlen(s->{}) + 1", field.0).as_bytes())?;
-			}
-			Types::Struct(_) => {
-				c_file.write(format!("{}_size(&s->{})", field.1.to_c(), field.0).as_bytes())?;
-			}
-			Types::Array(_) => {
-				c_file.write(format!("TYPST_INT_SIZE + s->{}_len * sizeof({})", field.0, field.1.to_c()).as_bytes())?;
-			}
-			_ => {
-				unimplemented!("Array and Struct deserialisation");
-			}
-		}
-	}
-	c_file.write(b";\n}\n")?;
-	Ok(())
+fn generate_size_function(
+    c_file: &mut fs::File,
+    name: &str,
+    s: &Struct,
+) -> Result<(), std::io::Error> {
+    generate_size_function_signature(c_file, name)?;
+    c_file.write(b"{\n	return ")?;
+    let mut first = true;
+    for field in s.fields() {
+        if !first {
+            c_file.write(b" + ")?;
+        }
+        first = false;
+        match field.1 {
+            Types::Bool | Types::Int | Types::Float => {
+                c_file.write(format!("TYPST_INT_SIZE").as_bytes())?;
+            }
+            Types::String => {
+                c_file.write(format!("strlen(s->{}) + 1", field.0).as_bytes())?;
+            }
+            Types::Struct(_) => {
+                c_file.write(format!("{}_size(&s->{})", field.1.to_c(), field.0).as_bytes())?;
+            }
+            Types::Array(_) => {
+                c_file.write(
+                    format!(
+                        "TYPST_INT_SIZE + s->{}_len * sizeof({})",
+                        field.0,
+                        field.1.to_c()
+                    )
+                    .as_bytes(),
+                )?;
+            }
+            _ => {
+                unimplemented!("Array and Struct deserialisation");
+            }
+        }
+    }
+    c_file.write(b";\n}\n")?;
+    Ok(())
 }
 
 fn generate_struct_serialisation_signature(
-	file: &mut fs::File,
-	name: &str,
+    file: &mut fs::File,
+    name: &str,
 ) -> Result<(), std::io::Error> {
-	file.write(
-		format!(
-			"int pack_{}(const {} *s, uint8_t *buffer, size_t *buffer_len)",
-			name, name
-		)
-		.as_bytes(),
-	)?;
-	Ok(())
+    file.write(
+        format!(
+            "int pack_{}(const {} *s, uint8_t *buffer, size_t *buffer_len)",
+            name, name
+        )
+        .as_bytes(),
+    )?;
+    Ok(())
 }
 
 fn generate_struct_serialisation_function(
-	file: &mut fs::File,
-	name: &str,
-	s: &Struct,
+    file: &mut fs::File,
+    name: &str,
+    s: &Struct,
 ) -> Result<(), std::io::Error> {
-	generate_struct_serialisation_signature(file, name)?;
-	file.write(b" {\n")?;
-	if let StructType::Struct = s.get_type() {
-		file.write(b"	size_t __buffer_offset = 0;")?;
-		file.write(format!("	size_t s_size = {}_size(s);\n", name).as_bytes())?;
-		file.write(b"	if (s_size > *buffer_len) {\n")?;
-		file.write(b"		return 1;\n")?;
-		file.write(b"	}\n")?;
-	} else {
-		file.write(format!("*buffer_len = {}_size(s);\n", name).as_bytes())?;
-		file.write(b"    INIT_BUFFER_PACK(buffer, buffer_len)\n")?;
-	}
+    generate_struct_serialisation_signature(file, name)?;
+    file.write(b" {\n")?;
+    if let StructType::Struct = s.get_type() {
+        file.write(b"	size_t __buffer_offset = 0;")?;
+        file.write(format!("	size_t s_size = {}_size(s);\n", name).as_bytes())?;
+        file.write(b"	if (s_size > *buffer_len) {\n")?;
+        file.write(b"		return 1;\n")?;
+        file.write(b"	}\n")?;
+    } else {
+        file.write(format!("*buffer_len = {}_size(s);\n", name).as_bytes())?;
+        file.write(b"    INIT_BUFFER_PACK(buffer, buffer_len)\n")?;
+    }
 
-	for field in s.fields() {
-		match field.1 {
-			Types::Bool | Types::Int => {
-				file.write(format!("    INT_PACK(s->{})\n", field.0).as_bytes())?;
-			}
-			Types::Float => {
-				file.write(format!("    FLOAT_PACK(s->{})\n", field.0).as_bytes())?;
-			}
-			Types::String => {
-				file.write(format!("    STR_PACK(s->{})\n", field.0).as_bytes())?;
-			}
-			Types::Char => {
-				file.write(format!("    CHAR_PACK(s->{})\n", field.0).as_bytes())?;
-			}
-			Types::Struct(name) => {
-				file.write(format!("    pack_{}(&s->{}, __input_buffer + __buffer_offset, buffer_len);\n", name, field.0).as_bytes())?;
-			}
-			Types::Array(t) => {
-				file.write(format!("    INT_PACK(s->{}_len)\n", field.0).as_bytes())?;
-				file.write(
-					format!(
-						"    for (size_t i = 0; i < s->{}_len; i++) {{\n",
-						field.0
-					)
-					.as_bytes(),
-				)?;
-				match t.as_ref() {
-					Types::Bool | Types::Int => {
-						file.write(
-							format!("        INT_PACK(s->{}[i])\n", field.0).as_bytes(),
-						)?;
-					}
-					Types::Float => {
-						file.write(
-							format!("        FLOAT_PACK(s->{}[i])\n", field.0).as_bytes(),
-						)?;
-					}
-					Types::String => {
-						file.write(
-							format!("        STR_PACK(s->{}[i])\n", field.0).as_bytes(),
-						)?;
-					}
-					Types::Char => {
-						file.write(
-							format!("        CHAR_PACK(s->{}[i])\n", field.0).as_bytes(),
-						)?;
-					}
-					Types::Struct(name) => {
-						file.write(format!("        pack_{}(&s->{}[i], __input_buffer + __buffer_offset, buffer_len);\n", name, field.0).as_bytes())?;
-					}
-					Types::Array(_) => {
-						unreachable!("Array of arrays not supported");
-					}
-				}
-				file.write(b"    }\n")?;
-			}
-		}
-	}
-	file.write(b"\n\treturn 0;\n}\n")?;
-	Ok(())
+    for field in s.fields() {
+        match field.1 {
+            Types::Bool | Types::Int => {
+                file.write(format!("    INT_PACK(s->{})\n", field.0).as_bytes())?;
+            }
+            Types::Float => {
+                file.write(format!("    FLOAT_PACK(s->{})\n", field.0).as_bytes())?;
+            }
+            Types::String => {
+                file.write(format!("    STR_PACK(s->{})\n", field.0).as_bytes())?;
+            }
+            Types::Char => {
+                file.write(format!("    CHAR_PACK(s->{})\n", field.0).as_bytes())?;
+            }
+            Types::Struct(name) => {
+                file.write(
+                    format!(
+                        "    pack_{}(&s->{}, __input_buffer + __buffer_offset, buffer_len);\n",
+                        name, field.0
+                    )
+                    .as_bytes(),
+                )?;
+            }
+            Types::Array(t) => {
+                file.write(format!("    INT_PACK(s->{}_len)\n", field.0).as_bytes())?;
+                file.write(
+                    format!("    for (size_t i = 0; i < s->{}_len; i++) {{\n", field.0).as_bytes(),
+                )?;
+                match t.as_ref() {
+                    Types::Bool | Types::Int => {
+                        file.write(format!("        INT_PACK(s->{}[i])\n", field.0).as_bytes())?;
+                    }
+                    Types::Float => {
+                        file.write(format!("        FLOAT_PACK(s->{}[i])\n", field.0).as_bytes())?;
+                    }
+                    Types::String => {
+                        file.write(format!("        STR_PACK(s->{}[i])\n", field.0).as_bytes())?;
+                    }
+                    Types::Char => {
+                        file.write(format!("        CHAR_PACK(s->{}[i])\n", field.0).as_bytes())?;
+                    }
+                    Types::Struct(name) => {
+                        file.write(format!("        pack_{}(&s->{}[i], __input_buffer + __buffer_offset, buffer_len);\n", name, field.0).as_bytes())?;
+                    }
+                    Types::Array(_) => {
+                        unreachable!("Array of arrays not supported");
+                    }
+                }
+                file.write(b"    }\n")?;
+            }
+        }
+    }
+    file.write(b"\n\treturn 0;\n}\n")?;
+    Ok(())
 }
 
 fn generate_struct_serialisation(
-	h_file: &mut fs::File,
+    h_file: &mut fs::File,
     c_file: &mut fs::File,
     name: &str,
     s: &Struct,
 ) -> Result<(), std::io::Error> {
-	if let StructType::Protocol(_) = s.get_type() {
-		generate_struct_serialisation_signature(h_file, name)?;
-		h_file.write(b";\n")?;
-	}
+    if let StructType::Protocol(_) = s.get_type() {
+        generate_struct_serialisation_signature(h_file, name)?;
+        h_file.write(b";\n")?;
+    }
 
-	generate_size_function(c_file, name, s)?;
-	generate_struct_serialisation_function(c_file, name, s)?;
-	Ok(())
+    generate_size_function(c_file, name, s)?;
+    generate_struct_serialisation_function(c_file, name, s)?;
+    Ok(())
 }
 
 fn generate(
-	h_file: &mut fs::File,
+    h_file: &mut fs::File,
     c_file: &mut fs::File,
     name: &str,
     s: &Struct,
 ) -> Result<(), std::io::Error> {
-	generate_struct(h_file, name, s)?;
-	if s.decoder {
-		generate_struct_deserialisation(h_file, c_file, name, s)?;
-	}
-	if s.encoder {
-		generate_struct_serialisation(h_file, c_file, name, s)?;
-	}
-	h_file.write(b"\n")?;
-	Ok(())
+    generate_struct(h_file, name, s)?;
+    if s.decoder {
+        generate_struct_deserialisation(h_file, c_file, name, s)?;
+    }
+    if s.encoder {
+        generate_struct_serialisation(h_file, c_file, name, s)?;
+    }
+    h_file.write(b"\n")?;
+    Ok(())
 }
 
 pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error> {
@@ -421,11 +429,11 @@ pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error>
     generate_header(&mut h_file)?;
     c_file.write(C.as_bytes())?;
     for (name, s) in p.structs() {
-		generate(&mut h_file, &mut c_file, name, s)?;
+        generate(&mut h_file, &mut c_file, name, s)?;
     }
     for (name, s) in p.protocols() {
         generate(&mut h_file, &mut c_file, name, s)?;
-    };
+    }
     generate_footer(&mut h_file)?;
     Ok(())
 }

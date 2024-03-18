@@ -143,17 +143,3 @@
 	}
 	(result, offset)
 }
-#let encode-Test(value) = {
-  encode-int(value.at("a")) + encode-float(value.at("b"))
-}
-#let encode-coucou(value) = {
-  encode-list(value.at("tests"), encode-Test)
-}
-#let decode-labels(bytes) = {
-  let offset = 0
-  (
-    hello: decode-Test(bytes.slice(offset, bytes.len())),
-    widths: decode-list(bytes.slice(offset, bytes.len()), decode-float),
-    heights: decode-list(bytes.slice(offset, bytes.len()), decode-float),
-  )
-}

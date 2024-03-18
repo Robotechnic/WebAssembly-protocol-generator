@@ -58,15 +58,15 @@ impl ProtocolParser {
                 }
                 fields.add_field(name, field_type);
             }
-			match fields.get_type() {
-				StructType::Protocol(ProtocolType::C) => {
-					fields.decoder = true;
-				}
-				StructType::Protocol(ProtocolType::Typst) => {
-					fields.encoder = true;
-				}
-				_ => {}
-			}
+            match fields.get_type() {
+                StructType::Protocol(ProtocolType::C) => {
+                    fields.decoder = true;
+                }
+                StructType::Protocol(ProtocolType::Typst) => {
+                    fields.encoder = true;
+                }
+                _ => {}
+            }
             Ok(fields)
         }
 

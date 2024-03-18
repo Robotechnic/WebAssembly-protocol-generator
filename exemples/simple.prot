@@ -1,4 +1,0 @@
-protocol C Simple {
-	int some_value;
-	bool some_flag;
-}
