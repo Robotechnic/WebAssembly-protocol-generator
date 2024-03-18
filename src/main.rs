@@ -1,4 +1,4 @@
-use std::fs::metadata;
+use std::{fs::metadata, process::exit};
 
 use clap::Parser;
 use wasmpg::{
@@ -13,25 +13,25 @@ fn main() {
     let file = match std::fs::read_to_string(args.input) {
         Ok(file) => file,
         Err(e) => {
-            println!("Error: {:?}", e);
-            return;
+            eprintln!("Error: {}", e.to_string());
+			exit(1);
         }
     };
 
     match metadata(&args.output_dir) {
         Ok(metadata) => {
             if !metadata.is_dir() {
-                println!("Error: Output directory is not a directory");
-                return;
+                eprintln!("Error: Output directory is not a directory");
+                exit(1);
             }
             if metadata.permissions().readonly() {
-                println!("Error: Output directory is not writable");
-                return;
+                eprintln!("Error: Output directory is not writable");
+                exit(1);
             }
         }
         Err(e) => {
-            println!("Error: {}", e.to_string());
-            return;
+            eprintln!("Error: Invalid output directory {}", e.to_string());
+            exit(1);
         }
     }
 

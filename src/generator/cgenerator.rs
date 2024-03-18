@@ -19,7 +19,7 @@ union FloatBuffer {
 	int i;
 };
 
-void big_endian_encode(uint8_t *buffer, int value);
+int big_endian_encode(int value, uint8_t *buffer, int size);
 
 int big_endian_decode(uint8_t const *buffer, int size);
 
