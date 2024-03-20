@@ -29,10 +29,22 @@ impl Types {
             Types::Bool => "bool".to_string(),
             Types::Char => "char".to_string(),
             Types::String => "char*".to_string(),
-            Types::Array(t) => format!("{}*", t.to_c()),
+            Types::Array(t) => format!("{} *", t.to_c()),
             Types::Struct(name) => name.to_string(),
         }
     }
+
+	pub fn to_typst(&self) -> String {
+		match self {
+			Types::Int => "int".to_string(),
+			Types::Float => "float".to_string(),
+			Types::Bool => "bool".to_string(),
+			Types::Char => "char".to_string(),
+			Types::String => "string".to_string(),
+			Types::Array(t) => format!("{}[]", t.to_typst()),
+			Types::Struct(name) => name.to_string(),
+		}
+	}
 }
 
 impl Debug for Types {

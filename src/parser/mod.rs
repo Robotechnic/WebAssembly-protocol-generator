@@ -56,6 +56,14 @@ impl ProtocolParser {
                     // we are in list mode
                     field_type = Types::Array(Box::new(field_type));
                 }
+				if fields.has_field(name) {
+					return Err(Error::new_from_span(
+						ErrorVariant::CustomError {
+							message: format!("Field \"{}\" already defined", name),
+						},
+						pos,
+					));
+				}
                 fields.add_field(name, field_type);
             }
             match fields.get_type() {

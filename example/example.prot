@@ -1,0 +1,15 @@
+struct Number {
+	float half;
+	int closestInt;
+	string romanRepresentation;
+	bool isNegative;
+	bool isOdd;
+}
+
+protocol C askNumber {
+	int numberCount;
+}
+
+protocol Typst result {
+	Number numbers[];
+}

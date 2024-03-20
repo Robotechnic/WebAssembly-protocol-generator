@@ -7,6 +7,7 @@ const HEADER: &str = "#ifndef PROTOCOL_H
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include \"emscripten.h\"
 
 #define PROTOCOL_FUNCTION __attribute__((import_module(\"typst_env\"))) extern
@@ -15,11 +16,11 @@ PROTOCOL_FUNCTION void wasm_minimal_protocol_send_result_to_host(const uint8_t *
 PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 
 union FloatBuffer {
-	float f;
-	int i;
+    float f;
+    int i;
 };
 
-int big_endian_encode(int value, uint8_t *buffer, int size);
+void big_endian_encode(int value, uint8_t *buffer, int size);
 
 int big_endian_decode(uint8_t const *buffer, int size);
 
@@ -46,48 +47,47 @@ int big_endian_decode(uint8_t const *buffer, int size);
     __buffer_offset += TYPST_INT_SIZE;
 
 #define NEXT_CHAR(dst)                                                                             \\
-	(dst) = __input_buffer[__buffer_offset++];
+    (dst) = __input_buffer[__buffer_offset++];
 
 #define NEXT_FLOAT(dst)                                                                            \\
-	{                                                                                              \\
-		int __encoded_value;                                                                       \\
-		NEXT_INT(__encoded_value);                                                                 \\
-		union FloatBuffer __float_buffer;                                                          \\
-		__float_buffer.i = __encoded_value;                                                        \\
-		(dst) = __float_buffer.f;                                                                  \\
-	}
-	
+    {                                                                                              \\
+        int __encoded_value;                                                                       \\
+        NEXT_INT(__encoded_value);                                                                 \\
+        union FloatBuffer __float_buffer;                                                          \\
+        __float_buffer.i = __encoded_value;                                                        \\
+        (dst) = __float_buffer.f;                                                                  \\
+    }
+    
 #define FREE_BUFFER()                                                                              \\
     free(__input_buffer);                                                                          \\
     __input_buffer = NULL;
 
-#define INIT_BUFFER_PACK(buffer, buffer_len)                                                       \\
-	size_t __buffer_offset = 0;                                                                    \\
-	uint8_t *__input_buffer = malloc((buffer_len));                                                \\
-	buffer = __input_buffer;                                                                       \\
-	if (!__input_buffer) {                                                                         \\
-		return 1;                                                                                  \\
-	}
+#define INIT_BUFFER_PACK(buffer_len)                                                               \\
+    size_t __buffer_offset = 0;                                                                    \\
+    uint8_t *__input_buffer = malloc((buffer_len));                                                \\
+    if (!__input_buffer) {                                                                         \\
+        return 1;                                                                                  \\
+    }
 
-#define FLOAT_PACK(f)                                                                              \\
-	{                                                                                              \\
-		union FloatBuffer __float_buffer;                                                          \\
-		__float_buffer.f = (f);                                                                    \\
-		big_endian_encode(__float_buffer.i, __input_buffer + __buffer_offset, TYPST_INT_SIZE);     \\
-		__buffer_offset += TYPST_INT_SIZE;                                                         \\
-	}
+#define FLOAT_PACK(fp)                                                                             \\
+    {                                                                                              \\
+        union FloatBuffer __float_buffer;                                                          \\
+        __float_buffer.f = (fp);                                                                    \\
+        big_endian_encode(__float_buffer.i, __input_buffer + __buffer_offset, TYPST_INT_SIZE);     \\
+        __buffer_offset += TYPST_INT_SIZE;                                                         \\
+    }
 
 #define INT_PACK(i)                                                                                \\
-	big_endian_encode((i), __input_buffer + __buffer_offset, TYPST_INT_SIZE);                      \\
-	__buffer_offset += TYPST_INT_SIZE;
+    big_endian_encode((i), __input_buffer + __buffer_offset, TYPST_INT_SIZE);                      \\
+    __buffer_offset += TYPST_INT_SIZE;
 
 #define CHAR_PACK(c)                                                                               \\
-	__input_buffer[__buffer_offset++] = (c);
+    __input_buffer[__buffer_offset++] = (c);
 
 #define STR_PACK(s)                                                                                \\
-	strcpy((char *)__input_buffer + __buffer_offset, (s));                                         \\
-	__input_buffer[__buffer_offset + strlen((s))] = '\\0';                                         \\
-	__buffer_offset += strlen((char *)__input_buffer + __buffer_offset) + 1;
+    strcpy((char *)__input_buffer + __buffer_offset, (s));                                         \\
+    __input_buffer[__buffer_offset + strlen((s))] = '\\0';                                         \\
+    __buffer_offset += strlen((char *)__input_buffer + __buffer_offset) + 1;
 ";
 
 const C: &str = "#include \"protocol.h\"
@@ -99,11 +99,36 @@ int big_endian_decode(uint8_t const *buffer, int size){
     return value;
 }
 
-int big_endian_encode(int value, uint8_t *buffer, int size) {
+void big_endian_encode(int value, uint8_t *buffer, int size) {
     for (int i = 0; i < sizeof(int); i++) {
         buffer[i] = (value >> (8 * (sizeof(int) - i - 1))) & 0xFF;
     }
 }
+
+size_t list_size(void *list, size_t size, size_t (*sf)(const void*), size_t element_size) {
+    size_t result = 0;
+    for (int i = 0; i < size; i++) {
+        result += sf(list + i * element_size);
+    }
+    return result;
+}
+
+size_t int_size(const void* elem) {
+    return TYPST_INT_SIZE;
+}
+size_t float_size(const void *elem) {
+    return TYPST_INT_SIZE;
+}
+size_t bool_size(const void *elem) {
+    return TYPST_INT_SIZE;
+}
+size_t char_size(const void *elem) {
+    return 1;
+}
+size_t string_size(const void *elem) {
+    return strlen((char *)elem) + 1;
+}
+
 ";
 
 fn generate_header(h_file: &mut fs::File) -> Result<(), std::io::Error> {
@@ -132,14 +157,19 @@ fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), 
 fn generate_struct_deserialisation_signature(
     file: &mut fs::File,
     name: &str,
+    s: &Struct,
 ) -> Result<(), std::io::Error> {
-    file.write(
-        format!(
-            "{} unpack_{}(uint8_t *buffer, size_t buffer_len)",
-            name, name
-        )
-        .as_bytes(),
-    )?;
+    if let StructType::Struct = s.get_type() {
+        file.write(
+            format!(
+                "int unpack_{}(uint8_t *__input_buffer, size_t buffer_len, {} *out)",
+                name, name
+            )
+            .as_bytes(),
+        )?;
+    } else {
+        file.write(format!("int unpack_{}(size_t buffer_len, {} *out)", name, name).as_bytes())?;
+    }
     Ok(())
 }
 
@@ -149,37 +179,36 @@ fn generate_struct_deserialisation_function(
     s: &Struct,
     free_buffer: bool,
 ) -> Result<(), std::io::Error> {
-    generate_struct_deserialisation_signature(file, name)?;
+    generate_struct_deserialisation_signature(file, name, s)?;
     file.write(b" {\n")?;
     if let StructType::Struct = s.get_type() {
-        file.write(b"	size_t __buffer_offset = 0;\n")?;
+        file.write(b"    size_t __buffer_offset = 0;\n")?;
     } else {
         file.write(b"    INIT_BUFFER_UNPACK(buffer_len)\n")?;
     }
-    file.write(format!("    {} result;\n", name).as_bytes())?;
     for field in s.fields() {
         println!("{:?}", field);
-        match field.1 {
-            Types::Bool | Types::Int => {
-                file.write(format!("    NEXT_INT(result.{})\n", field.0).as_bytes())?;
+        match &field.1 {
+            Types::Int => {
+                file.write(format!("    NEXT_INT(out->{})\n", field.0).as_bytes())?;
             }
             Types::Float => {
-                file.write(format!("    NEXT_FLOAT(result.{})\n", field.0).as_bytes())?;
+                file.write(format!("    NEXT_FLOAT(out->{})\n", field.0).as_bytes())?;
             }
             Types::String => {
-                file.write(format!("    NEXT_STR(result.{})\n", field.0).as_bytes())?;
+                file.write(format!("    NEXT_STR(out->{})\n", field.0).as_bytes())?;
             }
-            Types::Char => {
-                file.write(format!("    NEXT_CHAR(result.{})\n", field.0).as_bytes())?;
+            Types::Bool | Types::Char => {
+                file.write(format!("    NEXT_CHAR(out->{})\n", field.0).as_bytes())?;
             }
             Types::Struct(name) => {
-                file.write(format!("    result.{} = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                file.write(format!("    out->{} = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
             }
             Types::Array(t) => {
-                file.write(format!("    NEXT_INT(result.{}_len)\n", field.0).as_bytes())?;
+                file.write(format!("    NEXT_INT(out->{}_len)\n", field.0).as_bytes())?;
                 file.write(
                     format!(
-                        "    result.{} = malloc(result.{}_len * sizeof({}));\n",
+                        "    out->{} = malloc(out->{}_len * sizeof({}));\n",
                         field.0,
                         field.0,
                         t.to_c()
@@ -187,35 +216,26 @@ fn generate_struct_deserialisation_function(
                     .as_bytes(),
                 )?;
                 file.write(
-                    format!(
-                        "    for (size_t i = 0; i < result.{}_len; i++) {{\n",
-                        field.0
-                    )
-                    .as_bytes(),
+                    format!("    for (size_t i = 0; i < out->{}_len; i++) {{\n", field.0)
+                        .as_bytes(),
                 )?;
                 match t.as_ref() {
-                    Types::Bool | Types::Int => {
-                        file.write(
-                            format!("        NEXT_INT(result.{}[i])\n", field.0).as_bytes(),
-                        )?;
+                    Types::Int => {
+                        file.write(format!("        NEXT_INT(out->{}[i])\n", field.0).as_bytes())?;
                     }
-                    Types::Char => {
-                        file.write(
-                            format!("        NEXT_CHAR(result.{}[i])\n", field.0).as_bytes(),
-                        )?;
+                    Types::Bool | Types::Char => {
+                        file.write(format!("        NEXT_CHAR(out->{}[i])\n", field.0).as_bytes())?;
                     }
                     Types::Float => {
                         file.write(
-                            format!("        NEXT_FLOAT(result.{}[i])\n", field.0).as_bytes(),
+                            format!("        NEXT_FLOAT(out->{}[i])\n", field.0).as_bytes(),
                         )?;
                     }
                     Types::String => {
-                        file.write(
-                            format!("        NEXT_STR(result.{}[i])\n", field.0).as_bytes(),
-                        )?;
+                        file.write(format!("        NEXT_STR(out->{}[i])\n", field.0).as_bytes())?;
                     }
                     Types::Struct(name) => {
-                        file.write(format!("        result.{}[i] = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                        file.write(format!("        out->{}[i] = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
                     }
                     Types::Array(_) => {
                         unimplemented!("Array of arrays not supported");
@@ -228,7 +248,7 @@ fn generate_struct_deserialisation_function(
     if free_buffer {
         file.write(b"    FREE_BUFFER()\n")?;
     }
-    file.write(b"    return result;\n")?;
+    file.write(b"    return 0;\n")?;
     file.write(b"}\n")?;
     Ok(())
 }
@@ -240,7 +260,7 @@ fn generate_struct_deserialisation(
     s: &Struct,
 ) -> Result<(), std::io::Error> {
     let protocol = if let StructType::Protocol(_) = s.get_type() {
-        generate_struct_deserialisation_signature(h_file, name)?;
+        generate_struct_deserialisation_signature(h_file, name, s)?;
         h_file.write(b";\n")?;
         true
     } else {
@@ -254,7 +274,56 @@ fn generate_size_function_signature(
     c_file: &mut fs::File,
     name: &str,
 ) -> Result<(), std::io::Error> {
-    c_file.write(format!("size_t {}_size(const {} *s)", name, name).as_bytes())?;
+    c_file.write(format!("size_t {}_size(const void *vs)", name).as_bytes())?;
+    Ok(())
+}
+
+fn generate_type_size(
+    file: &mut fs::File,
+    t: &Types,
+    field_name: &str,
+) -> Result<(), std::io::Error> {
+    match t {
+        Types::Int | Types::Float => {
+            file.write(b"TYPST_INT_SIZE")?;
+        }
+        Types::Bool | Types::Char => {
+            file.write(b"1")?;
+        }
+        Types::String => {
+            file.write(format!("strlen(s->{}) + 1", field_name).as_bytes())?;
+        }
+        Types::Struct(_) => {
+            file.write(format!("{}_size({})", t.to_c(), field_name).as_bytes())?;
+        }
+        Types::Array(t) => {
+            file.write(
+                format!(
+                    "TYPST_INT_SIZE + list_size((void*)s->{}, s->{}_len, ",
+                    field_name, field_name
+                )
+                .as_bytes(),
+            )?;
+            match t.as_ref() {
+                Types::Int | Types::Float => {
+                    file.write(b"int_size")?;
+                }
+                Types::Bool | Types::Char => {
+                    file.write(b"char_size")?;
+                }
+                Types::String => {
+                    file.write(b"string_size")?;
+                }
+                Types::Struct(name) => {
+                    file.write(format!("{}_size", name).as_bytes())?;
+                }
+                Types::Array(_) => {
+                    unimplemented!("Array of arrays not supported");
+                }
+            }
+            file.write(format!(", sizeof(*s->{}))", field_name).as_bytes())?;
+        }
+    }
     Ok(())
 }
 
@@ -264,37 +333,16 @@ fn generate_size_function(
     s: &Struct,
 ) -> Result<(), std::io::Error> {
     generate_size_function_signature(c_file, name)?;
-    c_file.write(b"{\n	return ")?;
+    c_file.write(b"{\n")?;
+    c_file.write(format!("    const {} *s = vs;\n", name).as_bytes())?;
+    c_file.write(b"return ")?;
     let mut first = true;
     for field in s.fields() {
         if !first {
             c_file.write(b" + ")?;
         }
         first = false;
-        match field.1 {
-            Types::Bool | Types::Int | Types::Float => {
-                c_file.write(format!("TYPST_INT_SIZE").as_bytes())?;
-            }
-            Types::String => {
-                c_file.write(format!("strlen(s->{}) + 1", field.0).as_bytes())?;
-            }
-            Types::Struct(_) => {
-                c_file.write(format!("{}_size(&s->{})", field.1.to_c(), field.0).as_bytes())?;
-            }
-            Types::Array(_) => {
-                c_file.write(
-                    format!(
-                        "TYPST_INT_SIZE + s->{}_len * sizeof({})",
-                        field.0,
-                        field.1.to_c()
-                    )
-                    .as_bytes(),
-                )?;
-            }
-            _ => {
-                unimplemented!("Array and Struct deserialisation");
-            }
-        }
+        generate_type_size(c_file, &field.1, &field.0)?;
     }
     c_file.write(b";\n}\n")?;
     Ok(())
@@ -303,14 +351,67 @@ fn generate_size_function(
 fn generate_struct_serialisation_signature(
     file: &mut fs::File,
     name: &str,
+    s: &Struct,
 ) -> Result<(), std::io::Error> {
-    file.write(
-        format!(
-            "int pack_{}(const {} *s, uint8_t *buffer, size_t *buffer_len)",
-            name, name
-        )
-        .as_bytes(),
-    )?;
+    if let StructType::Struct = s.get_type() {
+        file.write(
+            format!(
+                "int pack_{}(const {} *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset)",
+                name, name
+            )
+            .as_bytes(),
+        )?;
+    } else {
+        file.write(format!("int pack_{}(const {} *s)", name, name).as_bytes())?;
+    }
+    Ok(())
+}
+
+fn generate_struct_serialisation_function_pack_line(
+    file: &mut fs::File,
+    field_name: &str,
+    t: &Types,
+    is_struct: bool,
+) -> Result<(), std::io::Error> {
+    match t {
+        Types::Int => {
+            file.write(format!("    INT_PACK(s->{})\n", field_name).as_bytes())?;
+        }
+        Types::Float => {
+            file.write(format!("    FLOAT_PACK(s->{})\n", field_name).as_bytes())?;
+        }
+        Types::String => {
+            file.write(format!("    STR_PACK(s->{})\n", field_name).as_bytes())?;
+        }
+        Types::Bool | Types::Char => {
+            file.write(format!("    CHAR_PACK(s->{})\n", field_name).as_bytes())?;
+        }
+        Types::Struct(name) => {
+            file.write(format!("    if (pack_{}(&s->{}, __input_buffer + __buffer_offset, {}buffer_len, &__buffer_offset)) {{\n", name, field_name, (if is_struct { "" } else { "&" })).as_bytes())?;
+            file.write(b"        return 1;\n")?;
+            file.write(b"    }\n")?;
+        }
+        Types::Array(t) => {
+            file.write(format!("    INT_PACK(s->{}_len)\n", field_name).as_bytes())?;
+            file.write(
+                format!("    for (size_t i = 0; i < s->{}_len; i++) {{\n", field_name).as_bytes(),
+            )?;
+            match t.as_ref() {
+                Types::Array(_) => {
+                    unreachable!("Array of arrays not supported");
+                }
+                _ => {
+                    generate_struct_serialisation_function_pack_line(
+                        file,
+                        &format!("{}[i]", field_name),
+                        t,
+                        is_struct,
+                    )?;
+                }
+            }
+			file.write(b"    }\n")?;
+        }
+    }
     Ok(())
 }
 
@@ -319,72 +420,39 @@ fn generate_struct_serialisation_function(
     name: &str,
     s: &Struct,
 ) -> Result<(), std::io::Error> {
-    generate_struct_serialisation_signature(file, name)?;
+    generate_struct_serialisation_signature(file, name, s)?;
     file.write(b" {\n")?;
     if let StructType::Struct = s.get_type() {
-        file.write(b"	size_t __buffer_offset = 0;")?;
-        file.write(format!("	size_t s_size = {}_size(s);\n", name).as_bytes())?;
-        file.write(b"	if (s_size > *buffer_len) {\n")?;
-        file.write(b"		return 1;\n")?;
-        file.write(b"	}\n")?;
+        file.write(b"    size_t __buffer_offset = 0;")?;
+        file.write(format!("    size_t s_size = {}_size(s);\n", name).as_bytes())?;
+        file.write(b"    if (s_size > *buffer_len) {\n")?;
+        file.write(b"        return 1;\n")?;
+        file.write(b"    }\n")?;
     } else {
-        file.write(format!("*buffer_len = {}_size(s);\n", name).as_bytes())?;
-        file.write(b"    INIT_BUFFER_PACK(buffer, buffer_len)\n")?;
+        file.write(format!("    size_t buffer_len = {}_size(s);\n", name).as_bytes())?;
+        file.write(b"    INIT_BUFFER_PACK(buffer_len)\n")?;
     }
 
     for field in s.fields() {
-        match field.1 {
-            Types::Bool | Types::Int => {
-                file.write(format!("    INT_PACK(s->{})\n", field.0).as_bytes())?;
-            }
-            Types::Float => {
-                file.write(format!("    FLOAT_PACK(s->{})\n", field.0).as_bytes())?;
-            }
-            Types::String => {
-                file.write(format!("    STR_PACK(s->{})\n", field.0).as_bytes())?;
-            }
-            Types::Char => {
-                file.write(format!("    CHAR_PACK(s->{})\n", field.0).as_bytes())?;
-            }
-            Types::Struct(name) => {
-                file.write(
-                    format!(
-                        "    pack_{}(&s->{}, __input_buffer + __buffer_offset, buffer_len);\n",
-                        name, field.0
-                    )
-                    .as_bytes(),
-                )?;
-            }
-            Types::Array(t) => {
-                file.write(format!("    INT_PACK(s->{}_len)\n", field.0).as_bytes())?;
-                file.write(
-                    format!("    for (size_t i = 0; i < s->{}_len; i++) {{\n", field.0).as_bytes(),
-                )?;
-                match t.as_ref() {
-                    Types::Bool | Types::Int => {
-                        file.write(format!("        INT_PACK(s->{}[i])\n", field.0).as_bytes())?;
-                    }
-                    Types::Float => {
-                        file.write(format!("        FLOAT_PACK(s->{}[i])\n", field.0).as_bytes())?;
-                    }
-                    Types::String => {
-                        file.write(format!("        STR_PACK(s->{}[i])\n", field.0).as_bytes())?;
-                    }
-                    Types::Char => {
-                        file.write(format!("        CHAR_PACK(s->{}[i])\n", field.0).as_bytes())?;
-                    }
-                    Types::Struct(name) => {
-                        file.write(format!("        pack_{}(&s->{}[i], __input_buffer + __buffer_offset, buffer_len);\n", name, field.0).as_bytes())?;
-                    }
-                    Types::Array(_) => {
-                        unreachable!("Array of arrays not supported");
-                    }
-                }
-                file.write(b"    }\n")?;
-            }
-        }
+        generate_struct_serialisation_function_pack_line(
+            file,
+            &field.0,
+            &field.1,
+            if let StructType::Struct = s.get_type() {
+                true
+            } else {
+                false
+            },
+        )?;
     }
-    file.write(b"\n\treturn 0;\n}\n")?;
+    if let StructType::Struct = s.get_type() {
+        file.write(b"\n    *buffer_offset += __buffer_offset;")?;
+    } else {
+        file.write(
+            b"\n    wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);",
+        )?;
+    }
+    file.write(b"\n    return 0;\n}\n")?;
     Ok(())
 }
 
@@ -395,7 +463,7 @@ fn generate_struct_serialisation(
     s: &Struct,
 ) -> Result<(), std::io::Error> {
     if let StructType::Protocol(_) = s.get_type() {
-        generate_struct_serialisation_signature(h_file, name)?;
+        generate_struct_serialisation_signature(h_file, name, s)?;
         h_file.write(b";\n")?;
     }
 

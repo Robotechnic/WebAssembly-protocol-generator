@@ -11,7 +11,7 @@
 /// Decodes a big-endian integer from the given bytes.
 #let decode-int(bytes) = {
   let result = 0
-  for byte in array(bytes) {
+  for byte in array(bytes.slice(0,4)) {
     result = result * 256 + byte
   }
   (result, 4)
@@ -26,12 +26,13 @@
 #let decode-string(bytes) = {
 	let length = 0
 	for byte in array(bytes) {
+		length = length + 1
 		if byte == 0x00 {
 			break
 		}
-		length = length + 1
 	}
-	(bytes.slice(0, length), length)
+	(str(bytes.slice(0, length - 1)), length)
+	//(array(bytes.slice(0, length - 1)), length)
 }
 
 /// Encodes a boolean into bytes
@@ -45,7 +46,7 @@
 
 /// Decodes a boolean from the given bytes
 #let decode-bool(bytes) = {
-  if bytes[0] == 0x00 {
+  if bytes.at(0) == 0x00 {
 	(false, 1)
   } else {
 	(true, 1)
@@ -59,7 +60,7 @@
 
 /// Decodes a character from the given bytes
 #let decode-char(bytes) = {
-  (bytes[0], 1)
+  (bytes.at(0), 1)
 }
 
 #let fractional-to-binary(fractional_part, max_dec) = {
@@ -81,7 +82,7 @@
 	let sign = if value < 0.0 { 1 } else { 0 }
 	let value = calc.abs(value)
 	let integer_part = calc.trunc(value)
-	let fractional_part = calc.abs(value - integer_part)
+	let fractional_part = calc.frac(value)
 	let exponent = calc.floor(calc.log(base: 2, integer_part))
 	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
 	integer_part *= calc.pow(2, 23 - exponent)
@@ -121,7 +122,7 @@
 
 /// Decodes a float from the given bytes
 #let decode-float(bytes) = {
-	(int-to-float(decode-int(bytes)[0]), 4)
+	(int-to-float(decode-int(bytes).at(0)), 4)
 }
 
 /// Encodes a list of elements into bytes
@@ -134,7 +135,7 @@
 /// Decodes a list of elements from the given bytes
 #let decode-list(bytes, decoder) = {
 	let (length, length_size) = decode-int(bytes)
-	let result = []
+	let result = ()
 	let offset = length_size
 	for i in range(0, length) {
 		let (element, size) = decoder(bytes.slice(offset, bytes.len()))
@@ -142,4 +143,35 @@
 		offset += size
 	}
 	(result, offset)
+}
+#let decode-Number(bytes) = {
+  let offset = 0
+  let (f_half, size) = decode-float(bytes.slice(offset, bytes.len()))
+  offset += size
+  let (f_closestInt, size) = decode-int(bytes.slice(offset, bytes.len()))
+  offset += size
+  let (f_romanRepresentation, size) = decode-string(bytes.slice(offset, bytes.len()))
+  offset += size
+  let (f_isNegative, size) = decode-bool(bytes.slice(offset, bytes.len()))
+  offset += size
+  let (f_isOdd, size) = decode-bool(bytes.slice(offset, bytes.len()))
+  offset += size
+  ((
+    half: f_half,
+    closestInt: f_closestInt,
+    romanRepresentation: f_romanRepresentation,
+    isNegative: f_isNegative,
+    isOdd: f_isOdd,
+  ), offset)
+}
+#let decode-result(bytes) = {
+  let offset = 0
+  let (f_numbers, size) = decode-list(bytes.slice(offset, bytes.len()), decode-Number)
+  offset += size
+  ((
+    numbers: f_numbers,
+  ), offset)
+}
+#let encode-askNumber(value) = {
+  encode-int(value.at("numberCount"))
 }

@@ -50,10 +50,10 @@ impl<'a> Protocol<'a> {
             let s = self.structs.get_mut(name.as_str()).unwrap();
             match t {
                 ProtocolType::C => {
-                    s.encoder = true;
+                    s.decoder = true;
                 }
                 ProtocolType::Typst => {
-                    s.decoder = true;
+                    s.encoder = true;
                 }
             }
         }

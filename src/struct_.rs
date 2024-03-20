@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashSet, fmt::Debug};
 
 use crate::types::Types;
 
@@ -18,7 +18,8 @@ pub struct Struct<'a> {
     type_: StructType,
     pub encoder: bool,
     pub decoder: bool,
-    fields: HashMap<&'a str, Types>,
+	fields_names: HashSet<&'a str>,
+    fields: Vec<(&'a str, Types)>,
 }
 
 impl<'a> Struct<'a> {
@@ -27,19 +28,25 @@ impl<'a> Struct<'a> {
             type_: struct_type,
             encoder: false,
             decoder: false,
-            fields: HashMap::new(),
+			fields_names: HashSet::new(),
+            fields: Vec::new()
         }
     }
 
     pub fn add_field(&mut self, name: &'a str, field_type: Types) {
-        self.fields.insert(name, field_type);
+        self.fields.push((name, field_type));
+		self.fields_names.insert(name);
     }
+
+	pub fn has_field(&self, name: &str) -> bool {
+		self.fields_names.contains(name)
+	}
 
     pub fn get_type(&self) -> &StructType {
         &self.type_
     }
 
-    pub fn fields(&self) -> std::collections::hash_map::Iter<'_, &str, Types> {
+    pub fn fields(&self) -> std::slice::Iter<(&'a str, Types)> {
         self.fields.iter()
     }
 }

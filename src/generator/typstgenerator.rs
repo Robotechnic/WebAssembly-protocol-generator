@@ -15,7 +15,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 /// Decodes a big-endian integer from the given bytes.
 #let decode-int(bytes) = {
   let result = 0
-  for byte in array(bytes) {
+  for byte in array(bytes.slice(0,4)) {
     result = result * 256 + byte
   }
   (result, 4)
@@ -30,12 +30,13 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 #let decode-string(bytes) = {
 	let length = 0
 	for byte in array(bytes) {
+		length = length + 1
 		if byte == 0x00 {
 			break
 		}
-		length = length + 1
 	}
-	(bytes.slice(0, length), length)
+	(str(bytes.slice(0, length - 1)), length)
+	//(array(bytes.slice(0, length - 1)), length)
 }
 
 /// Encodes a boolean into bytes
@@ -49,7 +50,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 
 /// Decodes a boolean from the given bytes
 #let decode-bool(bytes) = {
-  if bytes[0] == 0x00 {
+  if bytes.at(0) == 0x00 {
 	(false, 1)
   } else {
 	(true, 1)
@@ -63,7 +64,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 
 /// Decodes a character from the given bytes
 #let decode-char(bytes) = {
-  (bytes[0], 1)
+  (bytes.at(0), 1)
 }
 
 #let fractional-to-binary(fractional_part, max_dec) = {
@@ -85,7 +86,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 	let sign = if value < 0.0 { 1 } else { 0 }
 	let value = calc.abs(value)
 	let integer_part = calc.trunc(value)
-	let fractional_part = calc.abs(value - integer_part)
+	let fractional_part = calc.frac(value)
 	let exponent = calc.floor(calc.log(base: 2, integer_part))
 	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
 	integer_part *= calc.pow(2, 23 - exponent)
@@ -125,7 +126,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 
 /// Decodes a float from the given bytes
 #let decode-float(bytes) = {
-	(int-to-float(decode-int(bytes)[0]), 4)
+	(int-to-float(decode-int(bytes).at(0)), 4)
 }
 
 /// Encodes a list of elements into bytes
@@ -138,7 +139,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 /// Decodes a list of elements from the given bytes
 #let decode-list(bytes, decoder) = {
 	let (length, length_size) = decode-int(bytes)
-	let result = []
+	let result = ()
 	let offset = length_size
 	for i in range(0, length) {
 		let (element, size) = decoder(bytes.slice(offset, bytes.len()))
@@ -169,14 +170,14 @@ fn generate_dictionary_serialisation(
         match t {
             Types::Array(t) => {
                 file.write(
-                    format!("encode-list(value.at(\"{}\"), encode-{})", name, t.to_c()).as_bytes(),
+                    format!("encode-list(value.at(\"{}\"), encode-{})", name, t.to_typst()).as_bytes(),
                 )?;
             }
             Types::Struct(t) => {
                 file.write(format!("encode-{}(value.at(\"{}\"))", t, name).as_bytes())?;
             }
             _ => {
-                file.write(format!("encode-{}(value.at(\"{}\"))", t.to_c(), name).as_bytes())?;
+                file.write(format!("encode-{}(value.at(\"{}\"))", t.to_typst(), name).as_bytes())?;
             }
         }
         first = false;
@@ -192,15 +193,14 @@ fn generate_dictionary_deserialisaion(
 ) -> Result<(), std::io::Error> {
     file.write(format!("#let decode-{}(bytes) = {{\n", name).as_bytes())?;
     file.write(b"  let offset = 0\n")?;
-    file.write(b"  (\n")?;
     for (name, t) in s.fields() {
-        file.write(format!("    {}: ", name).as_bytes())?;
+        file.write(format!("  let (f_{}, size) = ", name).as_bytes())?;
         match t {
             Types::Array(t) => {
                 file.write(
                     format!(
                         "decode-list(bytes.slice(offset, bytes.len()), decode-{})",
-                        t.to_c()
+                        t.to_typst()
                     )
                     .as_bytes(),
                 )?;
@@ -210,13 +210,17 @@ fn generate_dictionary_deserialisaion(
             }
             _ => {
                 file.write(
-                    format!("decode-{}(bytes.slice(offset, bytes.len()))", t.to_c()).as_bytes(),
+                    format!("decode-{}(bytes.slice(offset, bytes.len()))", t.to_typst()).as_bytes(),
                 )?;
             }
         }
-        file.write(b",\n")?;
+        file.write(b"\n  offset += size\n")?;
     }
-    file.write(b"  )\n}\n")?;
+	file.write(b"  ((\n")?;
+	for (name, _) in s.fields() {
+		file.write(format!("    {}: f_{},\n", name, name).as_bytes())?;
+	}
+    file.write(b"  ), offset)\n}\n")?;
     Ok(())
 }
 
