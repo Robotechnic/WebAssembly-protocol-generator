@@ -96,12 +96,12 @@ typedef struct {
 typedef struct {
     int numberCount;
 } askNumber;
-int unpack_askNumber(size_t buffer_len, askNumber *out);
+int decode_askNumber(size_t buffer_len, askNumber *out);
 
 typedef struct {
     Number * numbers;
     size_t numbers_len;
 } result;
-int pack_result(const result *s);
+int encode_result(const result *s);
 
 #endif

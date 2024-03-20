@@ -50,7 +50,7 @@ void write_error_message(char *message) {
 EMSCRIPTEN_KEEPALIVE
 int ask_number(size_t buffer_size) {
 	askNumber n;
-	if (unpack_askNumber(buffer_size, &n)) {
+	if (decode_askNumber(buffer_size, &n)) {
         write_error_message("Failed to unpack askNumber");
 		return 1;
 	}
@@ -65,7 +65,7 @@ int ask_number(size_t buffer_size) {
 		response[i].isNegative = val < 0;
 	}
 	result r = {response, n.numberCount};
-	if (pack_result(&r)) {
+	if (encode_result(&r)) {
         write_error_message("Failed to pack result");
 		free_response(response, n.numberCount);
 		return 1;

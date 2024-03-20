@@ -162,13 +162,13 @@ fn generate_struct_deserialisation_signature(
     if let StructType::Struct = s.get_type() {
         file.write(
             format!(
-                "int unpack_{}(uint8_t *__input_buffer, size_t buffer_len, {} *out)",
+                "int decode_{}(uint8_t *__input_buffer, size_t buffer_len, {} *out)",
                 name, name
             )
             .as_bytes(),
         )?;
     } else {
-        file.write(format!("int unpack_{}(size_t buffer_len, {} *out)", name, name).as_bytes())?;
+        file.write(format!("int decode_{}(size_t buffer_len, {} *out)", name, name).as_bytes())?;
     }
     Ok(())
 }
@@ -202,7 +202,7 @@ fn generate_struct_deserialisation_function(
                 file.write(format!("    NEXT_CHAR(out->{})\n", field.0).as_bytes())?;
             }
             Types::Struct(name) => {
-                file.write(format!("    out->{} = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                file.write(format!("    out->{} = decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
             }
             Types::Array(t) => {
                 file.write(format!("    NEXT_INT(out->{}_len)\n", field.0).as_bytes())?;
@@ -235,7 +235,7 @@ fn generate_struct_deserialisation_function(
                         file.write(format!("        NEXT_STR(out->{}[i])\n", field.0).as_bytes())?;
                     }
                     Types::Struct(name) => {
-                        file.write(format!("        out->{}[i] = unpack_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                        file.write(format!("        out->{}[i] = decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
                     }
                     Types::Array(_) => {
                         unimplemented!("Array of arrays not supported");
@@ -356,18 +356,18 @@ fn generate_struct_serialisation_signature(
     if let StructType::Struct = s.get_type() {
         file.write(
             format!(
-                "int pack_{}(const {} *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset)",
+                "int encode_{}(const {} *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset)",
                 name, name
             )
             .as_bytes(),
         )?;
     } else {
-        file.write(format!("int pack_{}(const {} *s)", name, name).as_bytes())?;
+        file.write(format!("int encode_{}(const {} *s)", name, name).as_bytes())?;
     }
     Ok(())
 }
 
-fn generate_struct_serialisation_function_pack_line(
+fn generate_struct_serialisation_function_encode_line(
     file: &mut fs::File,
     field_name: &str,
     t: &Types,
@@ -387,7 +387,7 @@ fn generate_struct_serialisation_function_pack_line(
             file.write(format!("    CHAR_PACK(s->{})\n", field_name).as_bytes())?;
         }
         Types::Struct(name) => {
-            file.write(format!("    if (pack_{}(&s->{}, __input_buffer + __buffer_offset, {}buffer_len, &__buffer_offset)) {{\n", name, field_name, (if is_struct { "" } else { "&" })).as_bytes())?;
+            file.write(format!("    if (encode_{}(&s->{}, __input_buffer + __buffer_offset, {}buffer_len, &__buffer_offset)) {{\n", name, field_name, (if is_struct { "" } else { "&" })).as_bytes())?;
             file.write(b"        return 1;\n")?;
             file.write(b"    }\n")?;
         }
@@ -401,7 +401,7 @@ fn generate_struct_serialisation_function_pack_line(
                     unreachable!("Array of arrays not supported");
                 }
                 _ => {
-                    generate_struct_serialisation_function_pack_line(
+                    generate_struct_serialisation_function_encode_line(
                         file,
                         &format!("{}[i]", field_name),
                         t,
@@ -434,7 +434,7 @@ fn generate_struct_serialisation_function(
     }
 
     for field in s.fields() {
-        generate_struct_serialisation_function_pack_line(
+        generate_struct_serialisation_function_encode_line(
             file,
             &field.0,
             &field.1,
