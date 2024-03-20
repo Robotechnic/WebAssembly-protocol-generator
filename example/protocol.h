@@ -94,14 +94,14 @@ typedef struct {
 } Number;
 
 typedef struct {
+    int numberCount;
+} askNumber;
+int unpack_askNumber(size_t buffer_len, askNumber *out);
+
+typedef struct {
     Number * numbers;
     size_t numbers_len;
 } result;
 int pack_result(const result *s);
-
-typedef struct {
-    int numberCount;
-} askNumber;
-int unpack_askNumber(size_t buffer_len, askNumber *out);
 
 #endif

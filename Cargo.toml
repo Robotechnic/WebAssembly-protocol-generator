@@ -6,7 +6,6 @@ edition = "2021"
 description = "An utility script to generate the necessary code to easily use the WebAssembly minimal protocol of typst"
 readme = "README.md"
 repository = "https://github.com/Robotechnic/WebAssembly-protocol-generator"
-license = "MIT"
 license-file = "LICENSE"
 keywords = ["wasm", "protocol", "generator", "typst", "webassembly"]
 categories = ["development-tools", "command-line-utilities", "typst"]

@@ -164,6 +164,9 @@
     isOdd: f_isOdd,
   ), offset)
 }
+#let encode-askNumber(value) = {
+  encode-int(value.at("numberCount"))
+}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_numbers, size) = decode-list(bytes.slice(offset, bytes.len()), decode-Number)
@@ -171,7 +174,4 @@
   ((
     numbers: f_numbers,
   ), offset)
-}
-#let encode-askNumber(value) = {
-  encode-int(value.at("numberCount"))
 }

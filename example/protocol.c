@@ -55,6 +55,12 @@ int pack_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, si
     *buffer_offset += __buffer_offset;
     return 0;
 }
+int unpack_askNumber(size_t buffer_len, askNumber *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    NEXT_INT(out->numberCount)
+    FREE_BUFFER()
+    return 0;
+}
 size_t result_size(const void *vs){
     const result *s = vs;
 return TYPST_INT_SIZE + list_size((void*)s->numbers, s->numbers_len, Number_size, sizeof(*s->numbers));
@@ -65,16 +71,10 @@ int pack_result(const result *s) {
     INT_PACK(s->numbers_len)
     for (size_t i = 0; i < s->numbers_len; i++) {
     if (pack_Number(&s->numbers[i], __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset)) {
-            return 1;
-        }
+        return 1;
+    }
     }
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
-    return 0;
-}
-int unpack_askNumber(size_t buffer_len, askNumber *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    NEXT_INT(out->numberCount)
-    FREE_BUFFER()
     return 0;
 }
