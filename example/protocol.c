@@ -37,11 +37,10 @@ size_t string_size(const void *elem) {
     return strlen((char *)elem) + 1;
 }
 
-size_t Number_size(const void *vs){
-    const Number *s = vs;
-return TYPST_INT_SIZE + TYPST_INT_SIZE + strlen(s->romanRepresentation) + 1 + 1 + 1;
+size_t Number_size(const void *s){
+	return TYPST_INT_SIZE + TYPST_INT_SIZE + strlen(((Number*)s)->romanRepresentation) + 1 + 1 + 1;
 }
-int pack_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset) {
+int encode_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset) {
     size_t __buffer_offset = 0;    size_t s_size = Number_size(s);
     if (s_size > *buffer_len) {
         return 1;
@@ -55,22 +54,38 @@ int pack_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, si
     *buffer_offset += __buffer_offset;
     return 0;
 }
-int unpack_askNumber(size_t buffer_len, askNumber *out) {
+int decode_askNumber(size_t buffer_len, askNumber *out) {
     INIT_BUFFER_UNPACK(buffer_len)
     NEXT_INT(out->numberCount)
     FREE_BUFFER()
     return 0;
 }
-size_t result_size(const void *vs){
-    const result *s = vs;
-return TYPST_INT_SIZE + list_size((void*)s->numbers, s->numbers_len, Number_size, sizeof(*s->numbers));
+int decode_toDecimal(size_t buffer_len, toDecimal *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    NEXT_STR(out->roman)
+    FREE_BUFFER()
+    return 0;
 }
-int pack_result(const result *s) {
+size_t decimalResult_size(const void *s){
+	return TYPST_INT_SIZE;
+}
+int encode_decimalResult(const decimalResult *s) {
+    size_t buffer_len = decimalResult_size(s);
+    INIT_BUFFER_PACK(buffer_len)
+    INT_PACK(s->decimal)
+
+    wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
+    return 0;
+}
+size_t result_size(const void *s){
+	return TYPST_INT_SIZE + list_size(((result*)s)->numbers, ((result*)s)->numbers_len, Number_size, sizeof(*((result*)s)->numbers));
+}
+int encode_result(const result *s) {
     size_t buffer_len = result_size(s);
     INIT_BUFFER_PACK(buffer_len)
     INT_PACK(s->numbers_len)
     for (size_t i = 0; i < s->numbers_len; i++) {
-    if (pack_Number(&s->numbers[i], __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset)) {
+    if (encode_Number(&s->numbers[i], __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset)) {
         return 1;
     }
     }

@@ -13,3 +13,11 @@ protocol C askNumber {
 protocol Typst result {
 	Number numbers[];
 }
+
+protocol C toDecimal {
+	string roman;
+}
+
+protocol Typst decimalResult {
+	int decimal;
+}

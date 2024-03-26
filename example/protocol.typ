@@ -19,7 +19,7 @@
 
 /// Encodes a string into bytes.
 #let encode-string(value) = {
-	bytes(value) + bytes(0x00)
+	bytes(value) + bytes((0x00,))
 }
 
 /// Decodes a string from the given bytes.
@@ -31,16 +31,20 @@
 			break
 		}
 	}
-	(str(bytes.slice(0, length - 1)), length)
+	if length == 0 {
+		("", 1)
+	} else { 
+		(str(bytes.slice(0, length - 1)), length)
+	}
 	//(array(bytes.slice(0, length - 1)), length)
 }
 
 /// Encodes a boolean into bytes
 #let encode-bool(value) = {
   if value {
-	bytes(0x01)
+	bytes((0x01,))
   } else {
-	bytes(0x00)
+	bytes((0x00,))
   }
 }
 
@@ -82,7 +86,7 @@
 	let sign = if value < 0.0 { 1 } else { 0 }
 	let value = calc.abs(value)
 	let integer_part = calc.trunc(value)
-	let fractional_part = calc.frac(value)
+	let fractional_part = calc.fract(value)
 	let exponent = calc.floor(calc.log(base: 2, integer_part))
 	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
 	integer_part *= calc.pow(2, 23 - exponent)
@@ -166,6 +170,17 @@
 }
 #let encode-askNumber(value) = {
   encode-int(value.at("numberCount"))
+}
+#let encode-toDecimal(value) = {
+  encode-string(value.at("roman"))
+}
+#let decode-decimalResult(bytes) = {
+  let offset = 0
+  let (f_decimal, size) = decode-int(bytes.slice(offset, bytes.len()))
+  offset += size
+  ((
+    decimal: f_decimal,
+  ), offset)
 }
 #let decode-result(bytes) = {
   let offset = 0

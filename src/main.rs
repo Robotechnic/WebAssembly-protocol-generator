@@ -70,14 +70,18 @@ fn main() {
 
 	let c_folder = if let Some(c_folder) = args.c_output {
 		c_folder
+	} else if let Some(output_dir) = args.output_dir.clone() {
+		output_dir
 	} else {
-		args.output_dir.clone().unwrap()
+		".".to_string()
 	};
 
 	let typst_folder = if let Some(typst_folder) = args.typst_output {
 		typst_folder
+	} else if let Some(output_dir) = args.output_dir {
+		output_dir
 	} else {
-		args.output_dir.unwrap()
+		".".to_string()
 	};
 
 	check_folder(&c_folder);

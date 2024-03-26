@@ -36,10 +36,16 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define NEXT_STR(dst)                                                                              \\
     {                                                                                              \\
-        int __str_len = strlen((char *)__input_buffer + __buffer_offset);                          \\
-        (dst) = malloc(__str_len + 1);                                                             \\
-        strcpy((dst), (char *)__input_buffer + __buffer_offset);                                   \\
-        __buffer_offset += __str_len + 1;                                                          \\
+		if (__input_buffer[__buffer_offset] == '\\0') {                                            \\
+			(dst) = malloc(1);                                                                     \\
+			(dst)[0] = '\\0';                                                                      \\
+			__buffer_offset++;                                                                     \\
+		} else {                                                                                   \\
+			int __str_len = strlen((char *)__input_buffer + __buffer_offset);                      \\
+			(dst) = malloc(__str_len + 1);                                                         \\
+			strcpy((dst), (char *)__input_buffer + __buffer_offset);                               \\
+			__buffer_offset += __str_len + 1;                                                      \\
+		}                                                                                          \\
     }
 
 #define NEXT_INT(dst)                                                                              \\
@@ -85,9 +91,14 @@ int big_endian_decode(uint8_t const *buffer, int size);
     __input_buffer[__buffer_offset++] = (c);
 
 #define STR_PACK(s)                                                                                \\
-    strcpy((char *)__input_buffer + __buffer_offset, (s));                                         \\
-    __input_buffer[__buffer_offset + strlen((s))] = '\\0';                                         \\
-    __buffer_offset += strlen((char *)__input_buffer + __buffer_offset) + 1;
+    if (s == NULL) {                                                                               \\
+        __input_buffer[__buffer_offset++] = '\\0';                                                 \\
+    } else {                                                                                       \\
+        strcpy((char *)__input_buffer + __buffer_offset, (s));                                     \\
+        size_t __str_len = strlen((s));                                                            \\
+        __input_buffer[__buffer_offset + __str_len] = '\\0';                                       \\
+        __buffer_offset += __str_len + 1;                                                          \\
+    }
 ";
 
 const C: &str = "#include \"protocol.h\"
@@ -202,7 +213,7 @@ fn generate_struct_deserialisation_function(
                 file.write(format!("    NEXT_CHAR(out->{})\n", field.0).as_bytes())?;
             }
             Types::Struct(name) => {
-                file.write(format!("    out->{} = decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                file.write(format!("     if (decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset, out->{})){{return 1;}}\n", name, field.0).as_bytes())?;
             }
             Types::Array(t) => {
                 file.write(format!("    NEXT_INT(out->{}_len)\n", field.0).as_bytes())?;
@@ -235,7 +246,7 @@ fn generate_struct_deserialisation_function(
                         file.write(format!("        NEXT_STR(out->{}[i])\n", field.0).as_bytes())?;
                     }
                     Types::Struct(name) => {
-                        file.write(format!("        out->{}[i] = decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset);\n", field.0, name).as_bytes())?;
+                        file.write(format!("        if(decode_{}(__input_buffer + __buffer_offset, buffer_len - __buffer_offset,&out->{}[i])){{return 1;}}\n", name, field.0).as_bytes())?;
                     }
                     Types::Array(_) => {
                         unimplemented!("Array of arrays not supported");
@@ -274,12 +285,13 @@ fn generate_size_function_signature(
     c_file: &mut fs::File,
     name: &str,
 ) -> Result<(), std::io::Error> {
-    c_file.write(format!("size_t {}_size(const void *vs)", name).as_bytes())?;
+    c_file.write(format!("size_t {}_size(const void *s)", name).as_bytes())?;
     Ok(())
 }
 
 fn generate_type_size(
     file: &mut fs::File,
+	name: &str,
     t: &Types,
     field_name: &str,
 ) -> Result<(), std::io::Error> {
@@ -291,16 +303,16 @@ fn generate_type_size(
             file.write(b"1")?;
         }
         Types::String => {
-            file.write(format!("strlen(s->{}) + 1", field_name).as_bytes())?;
+            file.write(format!("strlen((({}*)s)->{}) + 1",name, field_name).as_bytes())?;
         }
         Types::Struct(_) => {
-            file.write(format!("{}_size({})", t.to_c(), field_name).as_bytes())?;
+            file.write(format!("{}_size((({}*)s)->{})", t.to_c(), name, field_name).as_bytes())?;
         }
         Types::Array(t) => {
             file.write(
                 format!(
-                    "TYPST_INT_SIZE + list_size((void*)s->{}, s->{}_len, ",
-                    field_name, field_name
+                    "TYPST_INT_SIZE + list_size((({}*)s)->{}, (({}*)s)->{}_len, ",
+                    name, field_name, name, field_name
                 )
                 .as_bytes(),
             )?;
@@ -321,7 +333,7 @@ fn generate_type_size(
                     unimplemented!("Array of arrays not supported");
                 }
             }
-            file.write(format!(", sizeof(*s->{}))", field_name).as_bytes())?;
+            file.write(format!(", sizeof(*(({}*)s)->{}))", name, field_name).as_bytes())?;
         }
     }
     Ok(())
@@ -334,15 +346,14 @@ fn generate_size_function(
 ) -> Result<(), std::io::Error> {
     generate_size_function_signature(c_file, name)?;
     c_file.write(b"{\n")?;
-    c_file.write(format!("    const {} *s = vs;\n", name).as_bytes())?;
-    c_file.write(b"return ")?;
+    c_file.write(b"\treturn ")?;
     let mut first = true;
     for field in s.fields() {
         if !first {
             c_file.write(b" + ")?;
         }
         first = false;
-        generate_type_size(c_file, &field.1, &field.0)?;
+        generate_type_size(c_file, name,  &field.1, &field.0)?;
     }
     c_file.write(b";\n}\n")?;
     Ok(())

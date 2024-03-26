@@ -33,10 +33,16 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define NEXT_STR(dst)                                                                              \
     {                                                                                              \
-        int __str_len = strlen((char *)__input_buffer + __buffer_offset);                          \
-        (dst) = malloc(__str_len + 1);                                                             \
-        strcpy((dst), (char *)__input_buffer + __buffer_offset);                                   \
-        __buffer_offset += __str_len + 1;                                                          \
+		if (__input_buffer[__buffer_offset] == '\0') {                                            \
+			(dst) = malloc(1);                                                                     \
+			(dst)[0] = '\0';                                                                      \
+			__buffer_offset++;                                                                     \
+		} else {                                                                                   \
+			int __str_len = strlen((char *)__input_buffer + __buffer_offset);                      \
+			(dst) = malloc(__str_len + 1);                                                         \
+			strcpy((dst), (char *)__input_buffer + __buffer_offset);                               \
+			__buffer_offset += __str_len + 1;                                                      \
+		}                                                                                          \
     }
 
 #define NEXT_INT(dst)                                                                              \
@@ -82,9 +88,14 @@ int big_endian_decode(uint8_t const *buffer, int size);
     __input_buffer[__buffer_offset++] = (c);
 
 #define STR_PACK(s)                                                                                \
-    strcpy((char *)__input_buffer + __buffer_offset, (s));                                         \
-    __input_buffer[__buffer_offset + strlen((s))] = '\0';                                         \
-    __buffer_offset += strlen((char *)__input_buffer + __buffer_offset) + 1;
+    if (s == NULL) {                                                                               \
+        __input_buffer[__buffer_offset++] = '\0';                                                 \
+    } else {                                                                                       \
+        strcpy((char *)__input_buffer + __buffer_offset, (s));                                     \
+        size_t __str_len = strlen((s));                                                            \
+        __input_buffer[__buffer_offset + __str_len] = '\0';                                       \
+        __buffer_offset += __str_len + 1;                                                          \
+    }
 typedef struct {
     float half;
     int closestInt;
@@ -97,6 +108,16 @@ typedef struct {
     int numberCount;
 } askNumber;
 int decode_askNumber(size_t buffer_len, askNumber *out);
+
+typedef struct {
+    char* roman;
+} toDecimal;
+int decode_toDecimal(size_t buffer_len, toDecimal *out);
+
+typedef struct {
+    int decimal;
+} decimalResult;
+int encode_decimalResult(const decimalResult *s);
 
 typedef struct {
     Number * numbers;

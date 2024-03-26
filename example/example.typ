@@ -20,3 +20,14 @@
 	"Is odd",
 	..unpacked.map(row => if row.at("isOdd") { "Yes" } else { "No" }),
 )
+
+
+= Roman conversion example
+#let nums = ("", "I", "CV", "CLXVIII", "MMXVIII", "MCMXCIX")
+#table(
+	columns: nums.len() + 1,
+	"Roman",
+	..nums,
+	"Decimal",
+	..nums.map(roman => str(decode-decimalResult(plugin.roman_to_decimal(encode-toDecimal(("roman": roman)))).at(0).at("decimal"))),
+)
