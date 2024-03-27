@@ -91,7 +91,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 	let value = calc.abs(value)
 	let integer_part = calc.trunc(value)
 	let fractional_part = calc.fract(value)
-	let exponent = calc.floor(calc.log(base: 2, integer_part))
+	let exponent = if integer_part == 0 {0} else {calc.floor(calc.log(base: 2, integer_part))}
 	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
 	integer_part *= calc.pow(2, 23 - exponent)
 	integer_part += fractional_part * calc.pow(2, 23 - exponent - shift)

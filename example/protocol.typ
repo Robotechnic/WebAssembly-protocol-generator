@@ -87,7 +87,7 @@
 	let value = calc.abs(value)
 	let integer_part = calc.trunc(value)
 	let fractional_part = calc.fract(value)
-	let exponent = calc.floor(calc.log(base: 2, integer_part))
+	let exponent = if integer_part == 0 {0} else {calc.floor(calc.log(base: 2, integer_part))}
 	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
 	integer_part *= calc.pow(2, 23 - exponent)
 	integer_part += fractional_part * calc.pow(2, 23 - exponent - shift)
@@ -176,9 +176,6 @@
     decimal: f_decimal,
   ), offset)
 }
-#let encode-askNumber(value) = {
-  encode-int(value.at("numberCount"))
-}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_numbers, size) = decode-list(bytes.slice(offset, bytes.len()), decode-Number)
@@ -189,4 +186,7 @@
 }
 #let encode-toDecimal(value) = {
   encode-string(value.at("roman"))
+}
+#let encode-askNumber(value) = {
+  encode-int(value.at("numberCount"))
 }

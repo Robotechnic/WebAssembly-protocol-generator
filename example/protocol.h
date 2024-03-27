@@ -33,7 +33,7 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define CHECK_BUFFER()                                                                             \
 	if (__buffer_offset >= buffer_len) {                                                           \
-		return 1;                                                                                  \
+		return 2;                                                                                  \
 	}
 
 #define NEXT_STR(dst)                                                                              \
@@ -103,7 +103,7 @@ int big_endian_decode(uint8_t const *buffer, int size);
     __input_buffer[__buffer_offset++] = (c);
 
 #define STR_PACK(s)                                                                                \
-    if (s == NULL) {                                                                               \
+    if (s == NULL || s[0] == '\0') {                                                               \
         __input_buffer[__buffer_offset++] = '\0';                                                 \
     } else {                                                                                       \
         strcpy((char *)__input_buffer + __buffer_offset, (s));                                     \
@@ -127,12 +127,6 @@ void free_decimalResult(decimalResult *s);
 int encode_decimalResult(const decimalResult *s);
 
 typedef struct {
-    int numberCount;
-} askNumber;
-void free_askNumber(askNumber *s);
-int decode_askNumber(size_t buffer_len, askNumber *out);
-
-typedef struct {
     Number * numbers;
     size_t numbers_len;
 } result;
@@ -144,5 +138,11 @@ typedef struct {
 } toDecimal;
 void free_toDecimal(toDecimal *s);
 int decode_toDecimal(size_t buffer_len, toDecimal *out);
+
+typedef struct {
+    int numberCount;
+} askNumber;
+void free_askNumber(askNumber *s);
+int decode_askNumber(size_t buffer_len, askNumber *out);
 
 #endif

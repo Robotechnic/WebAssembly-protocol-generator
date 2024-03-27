@@ -107,6 +107,15 @@ If you add an array to your protocol, the generated struct will have a field `na
 
 When you use them, you shouldn't manipulate the input buffer directly, the decode function will do it for you. The only thing you need to do is to pass the input buffer length to the decode function.
 
+#### Error codes signification
+
+| Code | Description |
+| :--: | ----------- |
+| 0 | No error |
+| 1 | Malloc error |
+| 2 | Invalid buffer length |
+| 3 | Invalid protocol |
+
 #### Example
 
 Based on the previous example, you will get the following exposed interface:

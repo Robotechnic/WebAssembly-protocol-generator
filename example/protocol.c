@@ -48,8 +48,10 @@ size_t Number_size(const void *s){
 int encode_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, size_t *buffer_offset) {
     size_t __buffer_offset = 0;    size_t s_size = Number_size(s);
     if (s_size > *buffer_len) {
-        return 1;
+        return 2;
     }
+    int err;
+	(void)err;
     FLOAT_PACK(s->half)
     INT_PACK(s->closestInt)
     STR_PACK(s->romanRepresentation)
@@ -67,17 +69,11 @@ size_t decimalResult_size(const void *s){
 int encode_decimalResult(const decimalResult *s) {
     size_t buffer_len = decimalResult_size(s);
     INIT_BUFFER_PACK(buffer_len)
+    int err;
+	(void)err;
     INT_PACK(s->decimal)
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
-    return 0;
-}
-void free_askNumber(askNumber *s) {
-}
-int decode_askNumber(size_t buffer_len, askNumber *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    NEXT_INT(out->numberCount)
-    FREE_BUFFER()
     return 0;
 }
 void free_result(result *s) {
@@ -92,11 +88,13 @@ size_t result_size(const void *s){
 int encode_result(const result *s) {
     size_t buffer_len = result_size(s);
     INIT_BUFFER_PACK(buffer_len)
+    int err;
+	(void)err;
     INT_PACK(s->numbers_len)
     for (size_t i = 0; i < s->numbers_len; i++) {
-    if (encode_Number(&s->numbers[i], __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset)) {
-        return 1;
-    }
+        if ((err = encode_Number(&s->numbers[i], __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset))) {
+            return err;
+        }
     }
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
@@ -109,7 +107,19 @@ void free_toDecimal(toDecimal *s) {
 }
 int decode_toDecimal(size_t buffer_len, toDecimal *out) {
     INIT_BUFFER_UNPACK(buffer_len)
+    int err;
+    (void)err;
     NEXT_STR(out->roman)
+    FREE_BUFFER()
+    return 0;
+}
+void free_askNumber(askNumber *s) {
+}
+int decode_askNumber(size_t buffer_len, askNumber *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    int err;
+    (void)err;
+    NEXT_INT(out->numberCount)
     FREE_BUFFER()
     return 0;
 }
