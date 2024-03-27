@@ -62,6 +62,7 @@ The following types are supported:
 | string | a c like string |
 | char | a single character |
 | float | 32 bits floating point number |
+| point | 32 bits floating point number in point, so it will be treated as a length in point in typst and as normal float in C |
 | `Name` | The type of the struct `Name` defined previously in the file |
 
 Any of the previous types can be put in an array by adding `[]` after the field name.

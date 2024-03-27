@@ -2,7 +2,7 @@ COMMENT = _{"//" ~ (!"\n" ~ ANY)* }
 WHITESPACE = _{" " | "\t" | "\n" | "\r"}
 
 IDENT = @{(ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
-FIELD_TYPE = {"int" | "float" | "string" | "bool" | "char"}
+FIELD_TYPE = {"int" | "float" | "string" | "bool" | "char" | "point"}
 LIST = {"[" ~ "]"}
 SEMICOLON = _{";"}
 STRUCT = _{"struct"}

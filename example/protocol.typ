@@ -124,9 +124,18 @@
 	encode-int(float-to-int(value))
 }
 
+#let encode-point(value) = {
+	encode-float(value / 1pt)
+}
+
 /// Decodes a float from the given bytes
 #let decode-float(bytes) = {
 	(int-to-float(decode-int(bytes).at(0)), 4)
+}
+
+#let decode-point(bytes) = {
+	let (value, size) = decode-float(bytes)
+	(value * 1pt, size)
 }
 
 /// Encodes a list of elements into bytes
@@ -184,9 +193,9 @@
     numbers: f_numbers,
   ), offset)
 }
-#let encode-toDecimal(value) = {
-  encode-string(value.at("roman"))
-}
 #let encode-askNumber(value) = {
   encode-int(value.at("numberCount"))
+}
+#let encode-toDecimal(value) = {
+  encode-string(value.at("roman"))
 }

@@ -134,15 +134,15 @@ void free_result(result *s);
 int encode_result(const result *s);
 
 typedef struct {
-    char* roman;
-} toDecimal;
-void free_toDecimal(toDecimal *s);
-int decode_toDecimal(size_t buffer_len, toDecimal *out);
-
-typedef struct {
     int numberCount;
 } askNumber;
 void free_askNumber(askNumber *s);
 int decode_askNumber(size_t buffer_len, askNumber *out);
+
+typedef struct {
+    char* roman;
+} toDecimal;
+void free_toDecimal(toDecimal *s);
+int decode_toDecimal(size_t buffer_len, toDecimal *out);
 
 #endif

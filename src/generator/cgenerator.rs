@@ -266,7 +266,7 @@ fn generate_struct_decode_line(
 		Types::Int => {
 			file.write(format!("    NEXT_INT(out->{})\n", field_name).as_bytes())?;
 		}
-		Types::Float => {
+		Types::Float | Types::Point => {
 			file.write(format!("    NEXT_FLOAT(out->{})\n", field_name).as_bytes())?;
 		}
 		Types::String => {
@@ -352,7 +352,7 @@ fn generate_type_size(
     field_name: &str,
 ) -> Result<(), std::io::Error> {
     match t {
-        Types::Int | Types::Float => {
+        Types::Int | Types::Float | Types::Point=> {
             file.write(b"TYPST_INT_SIZE")?;
         }
         Types::Bool | Types::Char => {
@@ -373,7 +373,7 @@ fn generate_type_size(
                 .as_bytes(),
             )?;
             match t.as_ref() {
-                Types::Int | Types::Float => {
+                Types::Int | Types::Float | Types::Point => {
                     file.write(b"int_size")?;
                 }
                 Types::Bool | Types::Char => {
@@ -444,7 +444,7 @@ fn generate_struct_encode_function_encode_line(
         Types::Int => {
             file.write(format!("    INT_PACK(s->{})\n", field_name).as_bytes())?;
         }
-        Types::Float => {
+        Types::Float | Types::Point => {
             file.write(format!("    FLOAT_PACK(s->{})\n", field_name).as_bytes())?;
         }
         Types::String => {

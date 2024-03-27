@@ -128,9 +128,18 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 	encode-int(float-to-int(value))
 }
 
+#let encode-point(value) = {
+	encode-float(value / 1pt)
+}
+
 /// Decodes a float from the given bytes
 #let decode-float(bytes) = {
 	(int-to-float(decode-int(bytes).at(0)), 4)
+}
+
+#let decode-point(bytes) = {
+	let (value, size) = decode-float(bytes)
+	(value * 1pt, size)
 }
 
 /// Encodes a list of elements into bytes

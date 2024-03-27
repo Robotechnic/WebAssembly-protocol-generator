@@ -3,6 +3,7 @@ use std::fmt::Debug;
 pub enum Types {
     Int,
     Float,
+	Point,
     Bool,
     Char,
     String,
@@ -18,6 +19,7 @@ impl Types {
             "bool" => Types::Bool,
             "char" => Types::Char,
             "string" => Types::String,
+			"point" => Types::Point,
             _ => Types::Struct(type_str.to_string()),
         }
     }
@@ -25,7 +27,7 @@ impl Types {
     pub fn to_c(&self) -> String {
         match self {
             Types::Int => "int".to_string(),
-            Types::Float => "float".to_string(),
+            Types::Float | Types::Point => "float".to_string(),
             Types::Bool => "bool".to_string(),
             Types::Char => "char".to_string(),
             Types::String => "char*".to_string(),
@@ -38,6 +40,7 @@ impl Types {
 		match self {
 			Types::Int => "int".to_string(),
 			Types::Float => "float".to_string(),
+			Types::Point => "point".to_string(),
 			Types::Bool => "bool".to_string(),
 			Types::Char => "char".to_string(),
 			Types::String => "string".to_string(),
@@ -52,6 +55,7 @@ impl Debug for Types {
         match self {
             Types::Int => write!(f, "int"),
             Types::Float => write!(f, "float"),
+			Types::Point => write!(f, "point"),
             Types::Bool => write!(f, "bool"),
             Types::Char => write!(f, "char"),
             Types::String => write!(f, "string"),
