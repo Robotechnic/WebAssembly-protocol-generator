@@ -34,28 +34,43 @@ int big_endian_decode(uint8_t const *buffer, int size);
     }                                                                                              \\
     wasm_minimal_protocol_write_args_to_buffer(__input_buffer);
 
+#define CHECK_BUFFER()                                                                             \\
+	if (__buffer_offset >= buffer_len) {                                                           \\
+		return 1;                                                                                  \\
+	}
+
 #define NEXT_STR(dst)                                                                              \\
+	CHECK_BUFFER()                                                                                 \\
     {                                                                                              \\
 		if (__input_buffer[__buffer_offset] == '\\0') {                                            \\
 			(dst) = malloc(1);                                                                     \\
+			if (!(dst)) {                                                                          \\
+				return 1;                                                                          \\
+			}                                                                                      \\
 			(dst)[0] = '\\0';                                                                      \\
 			__buffer_offset++;                                                                     \\
 		} else {                                                                                   \\
 			int __str_len = strlen((char *)__input_buffer + __buffer_offset);                      \\
 			(dst) = malloc(__str_len + 1);                                                         \\
+			if (!(dst)) {                                                                          \\
+				return 1;                                                                          \\
+			}                                                                                      \\
 			strcpy((dst), (char *)__input_buffer + __buffer_offset);                               \\
 			__buffer_offset += __str_len + 1;                                                      \\
 		}                                                                                          \\
     }
 
 #define NEXT_INT(dst)                                                                              \\
+	CHECK_BUFFER()                                                                                 \\
     (dst) = big_endian_decode(__input_buffer + __buffer_offset, TYPST_INT_SIZE);                   \\
     __buffer_offset += TYPST_INT_SIZE;
 
 #define NEXT_CHAR(dst)                                                                             \\
+	CHECK_BUFFER()                                                                                 \\
     (dst) = __input_buffer[__buffer_offset++];
 
 #define NEXT_FLOAT(dst)                                                                            \\
+	CHECK_BUFFER()                                                                                 \\
     {                                                                                              \\
         int __encoded_value;                                                                       \\
         NEXT_INT(__encoded_value);                                                                 \\
@@ -163,6 +178,64 @@ fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), 
     h_file.write(b"} ")?;
     h_file.write(format!("{};\n", name).as_bytes())?;
     Ok(())
+}
+
+fn generate_struct_free_signature(
+	file: &mut fs::File,
+	name: &str,
+) -> Result<(), std::io::Error> {
+	file.write(format!("void free_{}({} *s)", name, name).as_bytes())?;
+	Ok(())
+}
+
+fn need_free(t: &Types) -> bool {
+	match t {
+		Types::String => true,
+		Types::Struct(_) => true,
+		Types::Array(t) => need_free(t.as_ref()),
+		_ => false,
+	}
+}
+
+fn generate_struct_field_free_instruction(
+	c_file: &mut fs::File,
+	field_name: &str,
+	t: &Types,
+) -> Result<(), std::io::Error> {
+	match t {
+		Types::String => {
+			c_file.write(format!("    if (s->{}) {{\n", field_name).as_bytes())?;
+			c_file.write(format!("        free(s->{});\n", field_name).as_bytes())?;
+			c_file.write(b"    }\n")?;
+		}
+		Types::Struct(_) => {
+			c_file.write(format!("    free_{}(&s->{});\n", t.to_c(), field_name).as_bytes())?;
+		}
+		Types::Array(t) => {
+			if need_free(t.as_ref()) {
+				c_file.write(format!("    for (size_t i = 0; i < s->{}_len; i++) {{\n", field_name).as_bytes())?;
+				generate_struct_field_free_instruction(c_file, &format!("{}[i]", field_name), t.as_ref())?;
+				c_file.write(b"    }\n")?;
+			}
+			c_file.write(format!("    free(s->{});\n", field_name).as_bytes())?;
+		}
+		_ => {}
+	}
+	Ok(())
+}
+
+fn generate_struct_free(
+	c_file: &mut fs::File,
+	name: &str,
+	s: &Struct
+) -> Result<(), std::io::Error> {
+	generate_struct_free_signature(c_file, name)?;
+	c_file.write(b" {\n")?;
+	for field in s.fields() {
+		generate_struct_field_free_instruction(c_file, &field.0, &field.1)?;
+	}
+	c_file.write(b"}\n")?;
+	Ok(())
 }
 
 fn generate_struct_deserialisation_signature(
@@ -490,6 +563,9 @@ fn generate(
     s: &Struct,
 ) -> Result<(), std::io::Error> {
     generate_struct(h_file, name, s)?;
+	generate_struct_free_signature(h_file, name)?;
+	h_file.write(b";\n")?;
+	generate_struct_free(c_file, name, s)?;
     if s.decoder {
         generate_struct_deserialisation(h_file, c_file, name, s)?;
     }

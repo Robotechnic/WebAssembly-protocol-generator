@@ -37,6 +37,11 @@ size_t string_size(const void *elem) {
     return strlen((char *)elem) + 1;
 }
 
+void free_Number(Number *s) {
+    if (s->romanRepresentation) {
+        free(s->romanRepresentation);
+    }
+}
 size_t Number_size(const void *s){
 	return TYPST_INT_SIZE + TYPST_INT_SIZE + strlen(((Number*)s)->romanRepresentation) + 1 + 1 + 1;
 }
@@ -54,17 +59,7 @@ int encode_Number(const Number *s, uint8_t *__input_buffer, size_t *buffer_len, 
     *buffer_offset += __buffer_offset;
     return 0;
 }
-int decode_askNumber(size_t buffer_len, askNumber *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    NEXT_INT(out->numberCount)
-    FREE_BUFFER()
-    return 0;
-}
-int decode_toDecimal(size_t buffer_len, toDecimal *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    NEXT_STR(out->roman)
-    FREE_BUFFER()
-    return 0;
+void free_decimalResult(decimalResult *s) {
 }
 size_t decimalResult_size(const void *s){
 	return TYPST_INT_SIZE;
@@ -76,6 +71,20 @@ int encode_decimalResult(const decimalResult *s) {
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
     return 0;
+}
+void free_askNumber(askNumber *s) {
+}
+int decode_askNumber(size_t buffer_len, askNumber *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    NEXT_INT(out->numberCount)
+    FREE_BUFFER()
+    return 0;
+}
+void free_result(result *s) {
+    for (size_t i = 0; i < s->numbers_len; i++) {
+    free_Number(&s->numbers[i]);
+    }
+    free(s->numbers);
 }
 size_t result_size(const void *s){
 	return TYPST_INT_SIZE + list_size(((result*)s)->numbers, ((result*)s)->numbers_len, Number_size, sizeof(*((result*)s)->numbers));
@@ -91,5 +100,16 @@ int encode_result(const result *s) {
     }
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
+    return 0;
+}
+void free_toDecimal(toDecimal *s) {
+    if (s->roman) {
+        free(s->roman);
+    }
+}
+int decode_toDecimal(size_t buffer_len, toDecimal *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    NEXT_STR(out->roman)
+    FREE_BUFFER()
     return 0;
 }

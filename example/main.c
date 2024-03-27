@@ -68,14 +68,9 @@ int roman_to_int(char *roman) {
 		} else {
 			total += current;
 		}
+		prev = current;
 	}
 	return total;
-}
-
-void free_response(Number *response, size_t count) {
-	for (int i = 0; i < count; i++) {
-		free(response[i].romanRepresentation);
-	}
 }
 
 void write_error_message(char *message) {
@@ -102,10 +97,12 @@ int ask_number(size_t buffer_size) {
 	result r = {response, n.numberCount};
 	if (encode_result(&r)) {
         write_error_message("Failed to pack result");
-		free_response(response, n.numberCount);
+		free_result(&r);
+		free_askNumber(&n);
 		return 1;
 	}
-	free_response(response, n.numberCount);
+	free_result(&r);
+	free_askNumber(&n);
 	return 0;
 }
 
@@ -119,8 +116,12 @@ int roman_to_decimal(size_t buffer_size) {
 	decimalResult response;
 	response.decimal = roman_to_int(n.roman);
 	if (encode_decimalResult(&response)) {
+		free_decimalResult(&response);
+		free_toDecimal(&n);
 		write_error_message("Failed to pack decimalResult");
 		return 1;
 	}
+	free_decimalResult(&response);
+	free_toDecimal(&n);
 	return 0;
 }

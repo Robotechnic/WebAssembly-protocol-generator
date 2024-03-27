@@ -31,28 +31,43 @@ int big_endian_decode(uint8_t const *buffer, int size);
     }                                                                                              \
     wasm_minimal_protocol_write_args_to_buffer(__input_buffer);
 
+#define CHECK_BUFFER()                                                                             \
+	if (__buffer_offset >= buffer_len) {                                                           \
+		return 1;                                                                                  \
+	}
+
 #define NEXT_STR(dst)                                                                              \
+	CHECK_BUFFER()                                                                                 \
     {                                                                                              \
 		if (__input_buffer[__buffer_offset] == '\0') {                                            \
 			(dst) = malloc(1);                                                                     \
+			if (!(dst)) {                                                                          \
+				return 1;                                                                          \
+			}                                                                                      \
 			(dst)[0] = '\0';                                                                      \
 			__buffer_offset++;                                                                     \
 		} else {                                                                                   \
 			int __str_len = strlen((char *)__input_buffer + __buffer_offset);                      \
 			(dst) = malloc(__str_len + 1);                                                         \
+			if (!(dst)) {                                                                          \
+				return 1;                                                                          \
+			}                                                                                      \
 			strcpy((dst), (char *)__input_buffer + __buffer_offset);                               \
 			__buffer_offset += __str_len + 1;                                                      \
 		}                                                                                          \
     }
 
 #define NEXT_INT(dst)                                                                              \
+	CHECK_BUFFER()                                                                                 \
     (dst) = big_endian_decode(__input_buffer + __buffer_offset, TYPST_INT_SIZE);                   \
     __buffer_offset += TYPST_INT_SIZE;
 
 #define NEXT_CHAR(dst)                                                                             \
+	CHECK_BUFFER()                                                                                 \
     (dst) = __input_buffer[__buffer_offset++];
 
 #define NEXT_FLOAT(dst)                                                                            \
+	CHECK_BUFFER()                                                                                 \
     {                                                                                              \
         int __encoded_value;                                                                       \
         NEXT_INT(__encoded_value);                                                                 \
@@ -103,26 +118,31 @@ typedef struct {
     bool isNegative;
     bool isOdd;
 } Number;
-
-typedef struct {
-    int numberCount;
-} askNumber;
-int decode_askNumber(size_t buffer_len, askNumber *out);
-
-typedef struct {
-    char* roman;
-} toDecimal;
-int decode_toDecimal(size_t buffer_len, toDecimal *out);
+void free_Number(Number *s);
 
 typedef struct {
     int decimal;
 } decimalResult;
+void free_decimalResult(decimalResult *s);
 int encode_decimalResult(const decimalResult *s);
+
+typedef struct {
+    int numberCount;
+} askNumber;
+void free_askNumber(askNumber *s);
+int decode_askNumber(size_t buffer_len, askNumber *out);
 
 typedef struct {
     Number * numbers;
     size_t numbers_len;
 } result;
+void free_result(result *s);
 int encode_result(const result *s);
+
+typedef struct {
+    char* roman;
+} toDecimal;
+void free_toDecimal(toDecimal *s);
+int decode_toDecimal(size_t buffer_len, toDecimal *out);
 
 #endif

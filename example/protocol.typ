@@ -168,12 +168,6 @@
     isOdd: f_isOdd,
   ), offset)
 }
-#let encode-askNumber(value) = {
-  encode-int(value.at("numberCount"))
-}
-#let encode-toDecimal(value) = {
-  encode-string(value.at("roman"))
-}
 #let decode-decimalResult(bytes) = {
   let offset = 0
   let (f_decimal, size) = decode-int(bytes.slice(offset, bytes.len()))
@@ -182,6 +176,9 @@
     decimal: f_decimal,
   ), offset)
 }
+#let encode-askNumber(value) = {
+  encode-int(value.at("numberCount"))
+}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_numbers, size) = decode-list(bytes.slice(offset, bytes.len()), decode-Number)
@@ -189,4 +186,7 @@
   ((
     numbers: f_numbers,
   ), offset)
+}
+#let encode-toDecimal(value) = {
+  encode-string(value.at("roman"))
 }
