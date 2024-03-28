@@ -55,6 +55,10 @@ impl<'a> Protocol<'a> {
                 ProtocolType::Typst => {
                     s.encoder = true;
                 }
+				ProtocolType::Bidirectional => {
+					s.encoder = true;
+					s.decoder = true;
+				}
             }
         }
     }

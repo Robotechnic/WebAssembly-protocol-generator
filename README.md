@@ -32,12 +32,12 @@ Where `Name` is the name of the struct and `fields` is a list of fields separate
 A protocol is defined like follows:
 
 ```c
-protocol (C|Typst) Name {
+protocol (C|Typst|Bidirectional) Name {
     ...fields
 }
 ```
 
-The langage is the target language of the protocol, if it is `C`, the protocol will be encoded by Typst and decoded by C. if it is `Typst` the protocol will be encoded by C and decoded by Typst.
+The langage is the target language of the protocol, if it is `C`, the protocol will be encoded by Typst and decoded by C. if it is `Typst` the protocol will be encoded by C and decoded by Typst. `Bidirectional` is used when you whant the protocol to be encoded and decoded by both languages.
 
 Where `Name` is the name of the protocol and `fields` is a list of fields separated by semicolon.
 

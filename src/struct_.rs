@@ -6,6 +6,7 @@ use crate::types::Types;
 pub enum ProtocolType {
     C,
     Typst,
+	Bidirectional,
 }
 
 #[derive(Debug)]
@@ -66,6 +67,9 @@ impl<'a> Debug for Struct<'a> {
                     ProtocolType::Typst => {
                         write!(f, "Typst {{")?;
                     }
+					ProtocolType::Bidirectional => {
+						write!(f, "Bidirectional {{")?;
+					}
                 }
             }
         }
