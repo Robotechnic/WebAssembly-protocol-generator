@@ -76,6 +76,29 @@ int encode_decimalResult(const decimalResult *s) {
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
     return 0;
 }
+void free_askNumber(askNumber *s) {
+}
+int decode_askNumber(size_t buffer_len, askNumber *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    int err;
+    (void)err;
+    NEXT_INT(out->numberCount)
+    FREE_BUFFER()
+    return 0;
+}
+void free_toDecimal(toDecimal *s) {
+    if (s->roman) {
+        free(s->roman);
+    }
+}
+int decode_toDecimal(size_t buffer_len, toDecimal *out) {
+    INIT_BUFFER_UNPACK(buffer_len)
+    int err;
+    (void)err;
+    NEXT_STR(out->roman)
+    FREE_BUFFER()
+    return 0;
+}
 void free_result(result *s) {
     for (size_t i = 0; i < s->numbers_len; i++) {
     free_Number(&s->numbers[i]);
@@ -98,28 +121,5 @@ int encode_result(const result *s) {
     }
 
     wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
-    return 0;
-}
-void free_askNumber(askNumber *s) {
-}
-int decode_askNumber(size_t buffer_len, askNumber *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    int err;
-    (void)err;
-    NEXT_INT(out->numberCount)
-    FREE_BUFFER()
-    return 0;
-}
-void free_toDecimal(toDecimal *s) {
-    if (s->roman) {
-        free(s->roman);
-    }
-}
-int decode_toDecimal(size_t buffer_len, toDecimal *out) {
-    INIT_BUFFER_UNPACK(buffer_len)
-    int err;
-    (void)err;
-    NEXT_STR(out->roman)
-    FREE_BUFFER()
     return 0;
 }

@@ -72,8 +72,8 @@
 	let i = 0
 	while fractional_part != 0 and i < (23 - max_dec) {
 		fractional_part = fractional_part * 2
+		result *= 2
 		if fractional_part >= 1 {
-			result *= 2
 			result += 1
 			fractional_part = fractional_part - 1
 		}
@@ -185,6 +185,12 @@
     decimal: f_decimal,
   ), offset)
 }
+#let encode-askNumber(value) = {
+  encode-int(value.at("numberCount"))
+}
+#let encode-toDecimal(value) = {
+  encode-string(value.at("roman"))
+}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_numbers, size) = decode-list(bytes.slice(offset, bytes.len()), decode-Number)
@@ -192,10 +198,4 @@
   ((
     numbers: f_numbers,
   ), offset)
-}
-#let encode-askNumber(value) = {
-  encode-int(value.at("numberCount"))
-}
-#let encode-toDecimal(value) = {
-  encode-string(value.at("roman"))
 }

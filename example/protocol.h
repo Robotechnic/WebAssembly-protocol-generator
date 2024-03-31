@@ -127,13 +127,6 @@ void free_decimalResult(decimalResult *s);
 int encode_decimalResult(const decimalResult *s);
 
 typedef struct {
-    Number * numbers;
-    size_t numbers_len;
-} result;
-void free_result(result *s);
-int encode_result(const result *s);
-
-typedef struct {
     int numberCount;
 } askNumber;
 void free_askNumber(askNumber *s);
@@ -144,5 +137,12 @@ typedef struct {
 } toDecimal;
 void free_toDecimal(toDecimal *s);
 int decode_toDecimal(size_t buffer_len, toDecimal *out);
+
+typedef struct {
+    Number * numbers;
+    size_t numbers_len;
+} result;
+void free_result(result *s);
+int encode_result(const result *s);
 
 #endif

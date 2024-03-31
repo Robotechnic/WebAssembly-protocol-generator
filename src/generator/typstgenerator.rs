@@ -76,8 +76,8 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 	let i = 0
 	while fractional_part != 0 and i < (23 - max_dec) {
 		fractional_part = fractional_part * 2
+		result *= 2
 		if fractional_part >= 1 {
-			result *= 2
 			result += 1
 			fractional_part = fractional_part - 1
 		}
