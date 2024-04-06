@@ -71,33 +71,50 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
   (bytes.at(0), 1)
 }
 
-#let fractional-to-binary(fractional_part, max_dec) = {
+#let fractional-to-binary(fractional_part, max_dec, zero) = {
 	let result = 0
-	let i = 0
-	while fractional_part != 0 and i < (23 - max_dec) {
-		fractional_part = fractional_part * 2
-		result *= 2
-		if fractional_part >= 1 {
-			result += 1
-			fractional_part = fractional_part - 1
+	let i = 22 - max_dec
+	let first_one = 0
+	if zero {
+		while fractional_part < 1 {
+			fractional_part *= 2
+			first_one += 1
 		}
-		i += 1
+		fractional_part -= 1
+		i = 23
 	}
-	(result, i)
+	while i > 0 and fractional_part > 0 {
+		fractional_part *= 2
+		if fractional_part >= 1 {
+			result += calc.pow(2, i - 1)
+			fractional_part -= 1
+		}
+		i -= 1
+	}
+	(result, first_one)
 }
 
 #let float-to-int(value) = {
+	if value == 0 {
+		return 0
+	}
 	let sign = if value < 0.0 { 1 } else { 0 }
 	let value = calc.abs(value)
-	let integer_part = calc.trunc(value)
+	let mantissa = calc.trunc(value)
 	let fractional_part = calc.fract(value)
-	let exponent = if integer_part == 0 {0} else {calc.floor(calc.log(base: 2, integer_part))}
-	let (fractional_part, shift) = fractional-to-binary(fractional_part, exponent)
-	integer_part *= calc.pow(2, 23 - exponent)
-	integer_part += fractional_part * calc.pow(2, 23 - exponent - shift)
-	integer_part -= calc.pow(2, 23)
+	let exponent = if mantissa == 0 {
+		0
+	} else {
+		calc.floor(calc.log(base: 2, mantissa)) - 1
+	}
+	let (fractional_part, first_one) = fractional-to-binary(fractional_part, exponent, mantissa == 0)
+	mantissa *= calc.pow(2, 22 - exponent)
+	mantissa += fractional_part
+	if exponent == 0 {
+		exponent = -first_one
+	}
 	exponent += 127
-	sign * calc.pow(2, 31) + exponent * calc.pow(2, 23) + integer_part
+	return  sign * calc.pow(2, 31) + exponent * calc.pow(2, 23) + mantissa
 }
 
 #let mantissa-to-float(mantissa) = {
@@ -134,7 +151,8 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 
 /// Decodes a float from the given bytes
 #let decode-float(bytes) = {
-	(int-to-float(decode-int(bytes).at(0)), 4)
+	let (decoded, size) = decode-int(bytes)
+	(int-to-float(decoded), size)
 }
 
 #let decode-point(bytes) = {

@@ -85,18 +85,22 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define INIT_BUFFER_PACK(buffer_len)                                                               \\
     size_t __buffer_offset = 0;                                                                    \\
-    uint8_t *__input_buffer = malloc((buffer_len));                                                \\
+    uint8_t *__input_buffer = calloc((buffer_len), 1);                                             \\
     if (!__input_buffer) {                                                                         \\
         return 1;                                                                                  \\
     }
 
 #define FLOAT_PACK(fp)                                                                             \\
     {                                                                                              \\
-        union FloatBuffer __float_buffer;                                                          \\
-        __float_buffer.f = (fp);                                                                    \\
-        big_endian_encode(__float_buffer.i, __input_buffer + __buffer_offset, TYPST_INT_SIZE);     \\
-        __buffer_offset += TYPST_INT_SIZE;                                                         \\
-    }
+		if (fp == 0.0f) {  																	       \\
+			big_endian_encode(0, __input_buffer + __buffer_offset, TYPST_INT_SIZE);                \\
+		} else {                                                                                   \\
+			union FloatBuffer __float_buffer;                                                      \\
+			__float_buffer.f = (fp);                                                               \\
+			big_endian_encode(__float_buffer.i, __input_buffer + __buffer_offset, TYPST_INT_SIZE); \\
+		}                                                                                          \\
+		__buffer_offset += TYPST_INT_SIZE;                                                         \\
+	}
 
 #define INT_PACK(i)                                                                                \\
     big_endian_encode((i), __input_buffer + __buffer_offset, TYPST_INT_SIZE);                      \\
