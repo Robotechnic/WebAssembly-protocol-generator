@@ -15,14 +15,6 @@ const HEADER: &str = "#ifndef PROTOCOL_H
 PROTOCOL_FUNCTION void wasm_minimal_protocol_send_result_to_host(const uint8_t *ptr, size_t len);
 PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 
-union FloatBuffer {
-    float f;
-    int i;
-};
-
-void big_endian_encode(int value, uint8_t *buffer, int size);
-
-int big_endian_decode(uint8_t const *buffer, int size);
 
 #define TYPST_INT_SIZE 4
 
@@ -71,13 +63,8 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define NEXT_FLOAT(dst)                                                                            \\
 	CHECK_BUFFER()                                                                                 \\
-    {                                                                                              \\
-        int __encoded_value;                                                                       \\
-        NEXT_INT(__encoded_value);                                                                 \\
-        union FloatBuffer __float_buffer;                                                          \\
-        __float_buffer.i = __encoded_value;                                                        \\
-        (dst) = __float_buffer.f;                                                                  \\
-    }
+    (dst) = decode_float(__input_buffer + __buffer_offset);                                        \\
+	__buffer_offset += TYPST_INT_SIZE;
     
 #define FREE_BUFFER()                                                                              \\
     free(__input_buffer);                                                                          \\
@@ -85,7 +72,7 @@ int big_endian_decode(uint8_t const *buffer, int size);
 
 #define INIT_BUFFER_PACK(buffer_len)                                                               \\
     size_t __buffer_offset = 0;                                                                    \\
-    uint8_t *__input_buffer = calloc((buffer_len), 1);                                             \\
+    uint8_t *__input_buffer = malloc((buffer_len));                                             \\
     if (!__input_buffer) {                                                                         \\
         return 1;                                                                                  \\
     }
@@ -133,6 +120,27 @@ void big_endian_encode(int value, uint8_t *buffer, int size) {
     for (int i = 0; i < sizeof(int); i++) {
         buffer[i] = (value >> (8 * (sizeof(int) - i - 1))) & 0xFF;
     }
+}
+
+float decode_float(uint8_t *buffer) {
+	int value = big_endian_decode(buffer, TYPST_INT_SIZE);
+	int sign = (value >> 31) & 1;
+	int exponent = (value >> 23) & 0xFF;
+	int mantissa = value & 0x7FFFFF;
+	return (1.0f - 2.0f * sign) * (1.0f + mantissa / 0x800000) * (float)pow(2, exponent - 127);
+}
+
+void encode_float(float value, uint8_t *buffer) {
+	if (value == 0.0f) {
+		big_endian_encode(0, buffer, TYPST_INT_SIZE);
+	} else {
+		union FloatBuffer {
+			float f;
+			int i;
+		} float_buffer;
+		float_buffer.f = value;
+		big_endian_encode(float_buffer.i, buffer, TYPST_INT_SIZE);
+	}
 }
 
 size_t list_size(void *list, size_t size, size_t (*sf)(const void*), size_t element_size) {
