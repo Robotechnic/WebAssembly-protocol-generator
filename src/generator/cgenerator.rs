@@ -8,6 +8,7 @@ const HEADER: &str = "#ifndef PROTOCOL_H
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 #include \"emscripten.h\"
 
 #define PROTOCOL_FUNCTION __attribute__((import_module(\"typst_env\"))) extern
@@ -72,7 +73,7 @@ PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 
 #define INIT_BUFFER_PACK(buffer_len)                                                               \\
     size_t __buffer_offset = 0;                                                                    \\
-    uint8_t *__input_buffer = malloc((buffer_len));                                             \\
+    uint8_t *__input_buffer = malloc((buffer_len));                                                \\
     if (!__input_buffer) {                                                                         \\
         return 1;                                                                                  \\
     }
@@ -82,7 +83,10 @@ PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 		if (fp == 0.0f) {  																	       \\
 			big_endian_encode(0, __input_buffer + __buffer_offset, TYPST_INT_SIZE);                \\
 		} else {                                                                                   \\
-			union FloatBuffer __float_buffer;                                                      \\
+			union FloatBuffer { 																   \\
+				float f;   																	       \\
+				int i;   																	       \\
+			} __float_buffer;                                                                      \\
 			__float_buffer.f = (fp);                                                               \\
 			big_endian_encode(__float_buffer.i, __input_buffer + __buffer_offset, TYPST_INT_SIZE); \\
 		}                                                                                          \\
@@ -97,7 +101,7 @@ PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
     __input_buffer[__buffer_offset++] = (c);
 
 #define STR_PACK(s)                                                                                \\
-    if (s == NULL || s[0] == '\\0') {                                                               \\
+    if (s == NULL || s[0] == '\\0') {                                                              \\
         __input_buffer[__buffer_offset++] = '\\0';                                                 \\
     } else {                                                                                       \\
         strcpy((char *)__input_buffer + __buffer_offset, (s));                                     \\
