@@ -129,6 +129,9 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 }
 
 #let int-to-float(value) = {
+	if value == 0 {
+		return 0.0
+	}
 	let sign = if value >= calc.pow(2, 31) {
 		value -= calc.pow(2, 31)
 		 -1 
