@@ -128,10 +128,16 @@ void big_endian_encode(int value, uint8_t *buffer, int size) {
 
 float decode_float(uint8_t *buffer) {
 	int value = big_endian_decode(buffer, TYPST_INT_SIZE);
-	int sign = (value >> 31) & 1;
-	int exponent = (value >> 23) & 0xFF;
-	int mantissa = value & 0x7FFFFF;
-	return (1.0f - 2.0f * sign) * (1.0f + mantissa / 0x800000) * (float)pow(2, exponent - 127);
+	int value = big_endian_decode(buffer, TYPST_INT_SIZE);
+	if (value == 0) {
+		return 0.0f;
+	}
+	union FloatBuffer {
+		float f;
+		int i;
+	} float_buffer;
+	float_buffer.i = value;
+	return float_buffer.f;
 }
 
 void encode_float(float value, uint8_t *buffer) {

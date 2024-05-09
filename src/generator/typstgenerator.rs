@@ -149,7 +149,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 }
 
 #let encode-point(value) = {
-	encode-float(value / 1pt)
+	encode-float(value.pt())
 }
 
 /// Decodes a float from the given bytes
