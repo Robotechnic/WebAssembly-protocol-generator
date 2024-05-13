@@ -18,6 +18,7 @@ impl ProtocolParser {
             match pair.into_inner().next().unwrap().as_rule() {
                 Rule::PROTOCOL_C => ProtocolType::C,
                 Rule::PROTOCOL_TYPST => ProtocolType::Typst,
+				Rule::PROTOCOL_BIDIRECTIONAL => ProtocolType::Bidirectional,
                 _ => unreachable!(),
             }
         }

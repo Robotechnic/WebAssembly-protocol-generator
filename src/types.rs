@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+/// Represents the different types that can be used in the protocol
 pub enum Types {
     Int,
     Float,

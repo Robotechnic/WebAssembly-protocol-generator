@@ -6,6 +6,7 @@ use crate::{
     Struct,
 };
 
+/// A struct that contains all the structs and protocols defined in the protocol file
 pub struct Protocol<'a> {
     structs: HashMap<&'a str, Struct<'a>>,
     protocols: HashMap<&'a str, Struct<'a>>,
@@ -25,6 +26,7 @@ impl<'a> Protocol<'a> {
         self.structs.insert(name, struct_);
     }
 
+	/// Add a new protocol to the program
     pub fn add_protocol(&mut self, name: &'a str, protocol: Struct<'a>) {
         for (_, t) in protocol.fields() {
             match t {
@@ -42,6 +44,7 @@ impl<'a> Protocol<'a> {
         self.protocols.insert(name, protocol);
     }
 
+	/// Check the protocol type and set the encoding type of the struct accordingly
     fn set_struct_encoding_type(&mut self, name: &String, protocol: &Struct<'_>) {
         if !self.structs.contains_key(name.as_str()) {
             panic!("Protocol contain an undefined struct field");

@@ -178,16 +178,19 @@ size_t string_size(const void *elem) {
 
 ";
 
+/// Write the header of the generated .h file
 fn generate_header(h_file: &mut fs::File) -> Result<(), std::io::Error> {
     h_file.write(HEADER.as_bytes())?;
     Ok(())
 }
 
+/// Write the footer of the generated .h file
 fn generate_footer(h_file: &mut fs::File) -> Result<(), std::io::Error> {
     h_file.write(b"#endif\n")?;
     Ok(())
 }
 
+/// Write a struct definition in the generated .h file
 fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
     h_file.write(b"typedef struct {\n")?;
     for field in s.fields() {
@@ -201,6 +204,7 @@ fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), 
     Ok(())
 }
 
+/// Write a struct free function signature
 fn generate_struct_free_signature(
 	file: &mut fs::File,
 	name: &str,
@@ -209,6 +213,7 @@ fn generate_struct_free_signature(
 	Ok(())
 }
 
+/// Check if a type needs to be freed
 fn need_free(t: &Types) -> bool {
 	match t {
 		Types::String => true,
@@ -218,7 +223,8 @@ fn need_free(t: &Types) -> bool {
 	}
 }
 
-fn generate_struct_field_free_instruction(
+/// Write a struct free function body in the generated .c file
+fn generate_struct_field_free_body(
 	c_file: &mut fs::File,
 	field_name: &str,
 	t: &Types,
@@ -235,7 +241,7 @@ fn generate_struct_field_free_instruction(
 		Types::Array(t) => {
 			if need_free(t.as_ref()) {
 				c_file.write(format!("    for (size_t i = 0; i < s->{}_len; i++) {{\n", field_name).as_bytes())?;
-				generate_struct_field_free_instruction(c_file, &format!("{}[i]", field_name), t.as_ref())?;
+				generate_struct_field_free_body(c_file, &format!("{}[i]", field_name), t.as_ref())?;
 				c_file.write(b"    }\n")?;
 			}
 			c_file.write(format!("    free(s->{});\n", field_name).as_bytes())?;
@@ -245,6 +251,7 @@ fn generate_struct_field_free_instruction(
 	Ok(())
 }
 
+/// Write a struct free function in the generated .c file
 fn generate_struct_free(
 	c_file: &mut fs::File,
 	name: &str,
@@ -253,12 +260,13 @@ fn generate_struct_free(
 	generate_struct_free_signature(c_file, name)?;
 	c_file.write(b" {\n")?;
 	for field in s.fields() {
-		generate_struct_field_free_instruction(c_file, &field.0, &field.1)?;
+		generate_struct_field_free_body(c_file, &field.0, &field.1)?;
 	}
 	c_file.write(b"}\n")?;
 	Ok(())
 }
 
+/// Write a struct decode function signature
 fn generate_struct_decode_signature(
     file: &mut fs::File,
     name: &str,
@@ -278,6 +286,7 @@ fn generate_struct_decode_signature(
     Ok(())
 }
 
+/// Write a line to decode a field in a struct
 fn generate_struct_decode_line(
 	file: &mut fs::File,
 	field_name: &str,
@@ -313,6 +322,7 @@ fn generate_struct_decode_line(
 	Ok(())
 }
 
+/// Write a struct decode function body in the generated .c file
 fn generate_struct_decode_function(
     file: &mut fs::File,
     name: &str,
@@ -341,6 +351,7 @@ fn generate_struct_decode_function(
     Ok(())
 }
 
+/// Write a struct decode function in the generated .c file and its signature in the generated .h file
 fn generate_struct_decode(
     h_file: &mut fs::File,
     c_file: &mut fs::File,
@@ -358,6 +369,7 @@ fn generate_struct_decode(
     Ok(())
 }
 
+/// Write a size function signature, used to calculate the size of a struct
 fn generate_size_function_signature(
     c_file: &mut fs::File,
     name: &str,
@@ -366,6 +378,7 @@ fn generate_size_function_signature(
     Ok(())
 }
 
+/// Write a line to calculate the size of a field in a struct
 fn generate_type_size(
     file: &mut fs::File,
 	name: &str,
@@ -416,6 +429,7 @@ fn generate_type_size(
     Ok(())
 }
 
+/// Write a size function in the generated .c file
 fn generate_size_function(
     c_file: &mut fs::File,
     name: &str,
@@ -436,6 +450,7 @@ fn generate_size_function(
     Ok(())
 }
 
+/// Write a struct encode function signature
 fn generate_struct_encode_signature(
     file: &mut fs::File,
     name: &str,
@@ -455,6 +470,7 @@ fn generate_struct_encode_signature(
     Ok(())
 }
 
+/// Write a line to encode a field in a struct
 fn generate_struct_encode_function_encode_line(
     file: &mut fs::File,
     field_name: &str,
@@ -503,6 +519,7 @@ fn generate_struct_encode_function_encode_line(
     Ok(())
 }
 
+/// Write a struct encode function in the generated .c file
 fn generate_struct_encode_function(
     file: &mut fs::File,
     name: &str,
@@ -545,6 +562,8 @@ fn generate_struct_encode_function(
     Ok(())
 }
 
+/// Write a struct encode function in the generated .c file and its signature in the generated .h file
+/// It also writes the size function in the generated .c file
 fn generate_struct_encode(
     h_file: &mut fs::File,
     c_file: &mut fs::File,
@@ -561,6 +580,7 @@ fn generate_struct_encode(
     Ok(())
 }
 
+/// Generate all the necessary code for a struct in the generated .h and .c files
 fn generate(
     h_file: &mut fs::File,
     c_file: &mut fs::File,
@@ -581,6 +601,7 @@ fn generate(
     Ok(())
 }
 
+/// Generate the protocol in the given path
 pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error> {
     let c_path = format!("{}/protocol.c", path);
     let h_path = format!("{}/protocol.h", path);

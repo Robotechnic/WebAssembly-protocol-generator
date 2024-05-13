@@ -2,7 +2,12 @@ use std::{collections::HashSet, fmt::Debug};
 
 use crate::types::Types;
 
+
 #[derive(Debug)]
+/// Each protocol can be of type C, Typst or Bidirectional
+/// C: He protocol is encoded in Typst and decoded in C
+/// Typst: The protocol is encoded in C and decoded in Typst
+/// Bidirectional: The protocol is encoded and decoded in both Typst and C
 pub enum ProtocolType {
     C,
     Typst,
@@ -10,16 +15,21 @@ pub enum ProtocolType {
 }
 
 #[derive(Debug)]
+/// Struct and protocols are represented the same way so this enum is used to differentiate between them
+/// Struct: A struct used in the protocol, it's the same as a struct in C
+/// Protocol: A protocol definition
 pub enum StructType {
     Struct,
     Protocol(ProtocolType),
 }
 
+/// Used to represent a struct or a protocol in the protocol file
 pub struct Struct<'a> {
     type_: StructType,
     pub encoder: bool,
     pub decoder: bool,
 	fields_names: HashSet<&'a str>,
+	// fields are stored in a vector of tuples (name, type) because the order matters
     fields: Vec<(&'a str, Types)>,
 }
 

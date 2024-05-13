@@ -7,6 +7,7 @@ use wasmpg::{
     parser::ProtocolParser,
 };
 
+/// check if the given path is a folder and writable
 fn check_folder(path: &str) {
 	match metadata(path) {
 		Ok(metadata) => {
@@ -26,6 +27,7 @@ fn check_folder(path: &str) {
 	}
 }
 
+/// Call the generators functions to generate the C and Typst protocols
 fn generate_protocols(c_folder: String, protocol: wasmpg::protocol::Protocol<'_>, typst_folder: String) {
 	match cgenerator::generate_protocol(&c_folder, &protocol) {
 		Ok(_) => {
