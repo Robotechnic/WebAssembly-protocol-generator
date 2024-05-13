@@ -128,7 +128,6 @@ void big_endian_encode(int value, uint8_t *buffer, int size) {
 
 float decode_float(uint8_t *buffer) {
 	int value = big_endian_decode(buffer, TYPST_INT_SIZE);
-	int value = big_endian_decode(buffer, TYPST_INT_SIZE);
 	if (value == 0) {
 		return 0.0f;
 	}
