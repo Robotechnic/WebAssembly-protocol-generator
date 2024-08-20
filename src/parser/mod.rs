@@ -18,7 +18,7 @@ impl ProtocolParser {
             match pair.into_inner().next().unwrap().as_rule() {
                 Rule::PROTOCOL_C => ProtocolType::C,
                 Rule::PROTOCOL_TYPST => ProtocolType::Typst,
-				Rule::PROTOCOL_BIDIRECTIONAL => ProtocolType::Bidirectional,
+                Rule::PROTOCOL_BIDIRECTIONAL => ProtocolType::Bidirectional,
                 _ => unreachable!(),
             }
         }
@@ -27,23 +27,16 @@ impl ProtocolParser {
             pair: Pair<'a, Rule>,
             struct_type: StructType,
             protocol: &Protocol,
-            inside_struct: bool,
+			pos: pest::Span<'a>
         ) -> Result<Struct<'a>, Error<Rule>> {
-            let mut fields = Struct::new(struct_type);
+            let mut fields = Struct::new(struct_type, pos);
             for pair in pair.into_inner() {
                 let mut pair = pair.into_inner(); // get the block content
                 let type_tok = pair.next().unwrap();
                 let pos = type_tok.as_span();
                 let mut field_type = Types::parse(type_tok.as_str());
                 if let Types::Struct(ref name) = field_type {
-                    if !inside_struct {
-                        return Err(Error::new_from_span(
-                            ErrorVariant::CustomError {
-                                message: format!("You can't nest struct"),
-                            },
-                            pos,
-                        ));
-                    } else if !protocol.has_struct(&name) {
+                    if !protocol.has_struct(&name) {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
                                 message: format!("Struct \"{}\" not found", name),
@@ -57,15 +50,15 @@ impl ProtocolParser {
                     // we are in list mode
                     field_type = Types::Array(Box::new(field_type));
                 }
-				if fields.has_field(name) {
-					return Err(Error::new_from_span(
-						ErrorVariant::CustomError {
-							message: format!("Field \"{}\" already defined", name),
-						},
-						pos,
-					));
-				}
-                fields.add_field(name, field_type);
+                if fields.has_field(name) {
+                    return Err(Error::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: format!("Field \"{}\" already defined", name),
+                        },
+                        pos,
+                    ));
+                }
+                fields.add_field(name, field_type, pos);
             }
             match fields.get_type() {
                 StructType::Protocol(ProtocolType::C) => {
@@ -79,36 +72,35 @@ impl ProtocolParser {
             Ok(fields)
         }
 
-        fn parse_protocol(pair: Pair<Rule>) -> Result<Protocol, Error<Rule>> {
+        fn parse_protocol(program: Pair<Rule>) -> Result<Protocol, Error<Rule>> {
             let mut protocol = Protocol::default();
-            for pair in pair.into_inner() {
-                match pair.as_rule() {
+            for declarations in program.into_inner() {
+				let pos = declarations.as_span();
+                match declarations.as_rule() {
                     Rule::STRUCT_DEF => {
-                        let mut pair = pair.into_inner();
-                        let name = pair.next().unwrap().as_str();
+                        let mut struct_def = declarations.into_inner();
+                        let name = struct_def.next().unwrap().as_str();
                         protocol.add_struct(
                             name,
-                            parse_fields(
-                                pair.next().unwrap(),
-                                StructType::Struct,
-                                &protocol,
-                                false,
-                            )?,
+                            parse_fields(struct_def.next().unwrap(), StructType::Struct, &protocol, pos)?,
                         );
                     }
                     Rule::PROTOCOL_DEF => {
-                        let mut pair = pair.into_inner();
-                        let protocol_type = parse_protocol_type(pair.next().unwrap());
-                        let name = pair.next().unwrap().as_str();
+                        let mut protocol_def = declarations.into_inner();
+                        let protocol_type = parse_protocol_type(protocol_def.next().unwrap());
+                        let name = protocol_def.next().unwrap().as_str();
                         protocol.add_protocol(
                             name,
                             parse_fields(
-                                pair.next().unwrap(),
+                                protocol_def.next().unwrap(),
                                 StructType::Protocol(protocol_type),
                                 &protocol,
-                                true,
+								pos,
                             )?,
-                        )
+                        ).map_err(|(msg, pos)| Error::new_from_span(
+							ErrorVariant::CustomError { message: msg },
+							pos,
+						))?;
                     }
                     _ => unreachable!(),
                 }

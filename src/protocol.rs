@@ -1,5 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
+use pest::Span;
+
 use crate::{
     struct_::{ProtocolType, StructType},
     types::Types,
@@ -27,43 +29,49 @@ impl<'a> Protocol<'a> {
     }
 
 	/// Add a new protocol to the program
-    pub fn add_protocol(&mut self, name: &'a str, protocol: Struct<'a>) {
-        for (_, t) in protocol.fields() {
-            match t {
-                Types::Struct(name) => {
-                    self.set_struct_encoding_type(name, &protocol);
-                }
-                Types::Array(t) => {
-                    if let Types::Struct(name) = t.as_ref() {
-                        self.set_struct_encoding_type(name, &protocol);
-                    }
-                }
-                _ => {}
-            }
-        }
+    pub fn add_protocol(&mut self, name: &'a str, protocol: Struct<'a>) -> Result<(), (String, Span<'a>)> {
+		for (_, t, pos) in protocol.fields() {
+			match t {
+				Types::Struct(name) => {
+					self.set_struct_encoding_type(name, pos, &protocol)?;
+				}
+				Types::Array(t) => {
+					if let Types::Struct(name) = t.as_ref() {
+						self.set_struct_encoding_type(name, pos, &protocol)?;
+					}
+				}
+				_ => {}
+			}
+		}
         self.protocols.insert(name, protocol);
+		Ok(())
     }
 
 	/// Check the protocol type and set the encoding type of the struct accordingly
-    fn set_struct_encoding_type(&mut self, name: &String, protocol: &Struct<'_>) {
+    fn set_struct_encoding_type(&mut self, name: &String, pos: &Span<'a>, parent_protocol: &Struct<'a>) -> Result<(), (String, Span<'a>)> {
         if !self.structs.contains_key(name.as_str()) {
-            panic!("Protocol contain an undefined struct field");
+			return Err((format!("Struct \"{}\" does not exist", name),
+				pos.clone(),
+			));
         }
-        if let StructType::Protocol(t) = protocol.get_type() {
-            let s = self.structs.get_mut(name.as_str()).unwrap();
-            match t {
-                ProtocolType::C => {
-                    s.decoder = true;
-                }
-                ProtocolType::Typst => {
-                    s.encoder = true;
-                }
+		if let StructType::Protocol(parent_type) = parent_protocol.get_type() {
+			let s = self.structs.get_mut(name.as_str()).unwrap();
+			match parent_type {
+				ProtocolType::C => {
+					s.decoder = true;
+				}
+				ProtocolType::Typst => {
+					s.encoder = true;
+				}
 				ProtocolType::Bidirectional => {
 					s.encoder = true;
 					s.decoder = true;
 				}
-            }
-        }
+			}
+		} else {
+			unreachable!();
+		}
+		Ok(())
     }
 
     pub fn has_protocol(&self, name: &str) -> bool {

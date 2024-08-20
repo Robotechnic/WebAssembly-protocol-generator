@@ -26,17 +26,19 @@ pub enum StructType {
 /// Used to represent a struct or a protocol in the protocol file
 pub struct Struct<'a> {
     type_: StructType,
+	pos: pest::Span<'a>,
     pub encoder: bool,
     pub decoder: bool,
 	fields_names: HashSet<&'a str>,
 	// fields are stored in a vector of tuples (name, type) because the order matters
-    fields: Vec<(&'a str, Types)>,
+    fields: Vec<(&'a str, Types, pest::Span<'a>)>,
 }
 
 impl<'a> Struct<'a> {
-    pub fn new(struct_type: StructType) -> Struct<'a> {
+    pub fn new(struct_type: StructType, pos: pest::Span<'a> ) -> Struct<'a> {
         Struct {
             type_: struct_type,
+			pos,
             encoder: false,
             decoder: false,
 			fields_names: HashSet::new(),
@@ -44,8 +46,8 @@ impl<'a> Struct<'a> {
         }
     }
 
-    pub fn add_field(&mut self, name: &'a str, field_type: Types) {
-        self.fields.push((name, field_type));
+    pub fn add_field(&mut self, name: &'a str, field_type: Types, pos: pest::Span<'a>) {
+        self.fields.push((name, field_type, pos));
 		self.fields_names.insert(name);
     }
 
@@ -57,9 +59,13 @@ impl<'a> Struct<'a> {
         &self.type_
     }
 
-    pub fn fields(&self) -> std::slice::Iter<(&'a str, Types)> {
+    pub fn fields(&self) -> std::slice::Iter<(&'a str, Types, pest::Span<'a>)> {
         self.fields.iter()
     }
+
+	pub fn get_pos(&self) -> pest::Span<'a> {
+		self.pos
+	}
 }
 
 impl<'a> Debug for Struct<'a> {
@@ -83,7 +89,7 @@ impl<'a> Debug for Struct<'a> {
                 }
             }
         }
-        for (name, field) in &self.fields {
+        for (name, field, _) in &self.fields {
             write!(f, "\n\t{}: {:?}", name, field)?;
         }
         write!(f, "\n}}")
