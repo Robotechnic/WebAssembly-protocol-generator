@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::{HashMap, HashSet}, fmt::Debug};
 
 use pest::Span;
 
@@ -24,13 +24,54 @@ impl<'a> Default for Protocol<'a> {
 }
 
 impl<'a> Protocol<'a> {
-    pub fn add_struct(&mut self, name: &'a str, struct_: Struct<'a>) {
+	fn check_circular_dependencies(&self, struct_: &Struct<'a>, parents: &HashSet<&str>) -> Result<(), (String, Span<'a>)> {
+		for (_, t, pos) in struct_.iter() {
+			match t {
+				Types::Struct(name) => {
+					if parents.contains(name.as_str()) {
+						return Err((
+							format!("Circular dependency detected: {} is its own parent", name),
+							pos.clone()
+						))
+					}
+					if let Some(s) = self.structs.get(name.as_str()) {
+						let mut parents = parents.clone();
+						parents.insert(name.as_str());
+						self.check_circular_dependencies(s, &parents)?;
+					}
+				}
+				Types::Array(t) => {
+					if let Types::Struct(name) = t.as_ref() {
+						if parents.contains(name.as_str()) {
+							return Err((
+								format!("Circular dependency detected: {} is its own parent", name),
+								pos.clone()
+							))
+						}
+						if let Some(s) = self.structs.get(name.as_str()) {
+							let mut parents = parents.clone();
+							parents.insert(name.as_str());
+							self.check_circular_dependencies(s, &parents)?;
+						}
+					}
+				}
+				_ => {}
+			}
+		}
+		Ok(())
+	}
+
+    pub fn add_struct(&mut self, name: &'a str, struct_: Struct<'a>) -> Result<(), (String, Span<'a>)> {
+		let mut set = HashSet::new();
+		set.insert(name);
+		self.check_circular_dependencies(&struct_, &set)?;
         self.structs.insert(name, struct_);
+		Ok(())
     }
 
 	/// Add a new protocol to the program
     pub fn add_protocol(&mut self, name: &'a str, protocol: Struct<'a>) -> Result<(), (String, Span<'a>)> {
-		for (_, t, pos) in protocol.fields() {
+		for (_, t, pos) in protocol.iter() {
 			match t {
 				Types::Struct(name) => {
 					self.set_struct_encoding_type(name, pos, &protocol)?;

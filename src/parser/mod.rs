@@ -83,7 +83,10 @@ impl ProtocolParser {
                         protocol.add_struct(
                             name,
                             parse_fields(struct_def.next().unwrap(), StructType::Struct, &protocol, pos)?,
-                        );
+                        ).map_err(|(msg, pos)| Error::new_from_span(
+							ErrorVariant::CustomError { message: msg },
+							pos,
+						))?;
                     }
                     Rule::PROTOCOL_DEF => {
                         let mut protocol_def = declarations.into_inner();

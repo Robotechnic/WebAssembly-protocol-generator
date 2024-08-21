@@ -193,7 +193,7 @@ fn generate_footer(h_file: &mut fs::File) -> Result<(), std::io::Error> {
 /// Write a struct definition in the generated .h file
 fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
     h_file.write(b"typedef struct {\n")?;
-    for field in s.fields() {
+    for field in s.iter() {
         h_file.write(format!("    {} {};\n", field.1.to_c(), field.0).as_bytes())?;
         if let Types::Array(_) = field.1 {
             h_file.write(format!("    size_t {}_len;\n", field.0).as_bytes())?;
@@ -259,7 +259,7 @@ fn generate_struct_free(
 ) -> Result<(), std::io::Error> {
 	generate_struct_free_signature(c_file, name)?;
 	c_file.write(b" {\n")?;
-	for field in s.fields() {
+	for field in s.iter() {
 		generate_struct_field_free_body(c_file, &field.0, &field.1)?;
 	}
 	c_file.write(b"}\n")?;
@@ -337,7 +337,7 @@ fn generate_struct_decode_function(
         file.write(b"    INIT_BUFFER_UNPACK(buffer_len)\n")?;
     }
 	file.write(b"    int err;\n    (void)err;\n")?;
-    for field in s.fields() {
+    for field in s.iter() {
 		generate_struct_decode_line(file, &field.0, &field.1)?;
     }
     if free_buffer {
@@ -439,7 +439,7 @@ fn generate_size_function(
     c_file.write(b"{\n")?;
     c_file.write(b"\treturn ")?;
     let mut first = true;
-    for field in s.fields() {
+    for field in s.iter() {
         if !first {
             c_file.write(b" + ")?;
         }
@@ -539,7 +539,7 @@ fn generate_struct_encode_function(
     }
 	file.write(b"    int err;\n	(void)err;\n")?;
 
-    for field in s.fields() {
+    for field in s.iter() {
         generate_struct_encode_function_encode_line(
             file,
             &field.0,

@@ -197,7 +197,7 @@ fn generate_dictionary_serialisation(
     file.write(format!("#let encode-{}(value) = {{\n", name).as_bytes())?;
     file.write(b"  ")?;
     let mut first = true;
-    for (name, t, _) in s.fields() {
+    for (name, t, _) in s.iter() {
         if !first {
             file.write(b" + ")?;
         }
@@ -227,7 +227,7 @@ fn generate_dictionary_deserialisaion(
 ) -> Result<(), std::io::Error> {
     file.write(format!("#let decode-{}(bytes) = {{\n", name).as_bytes())?;
     file.write(b"  let offset = 0\n")?;
-    for (name, t, _) in s.fields() {
+    for (name, t, _) in s.iter() {
         file.write(format!("  let (f_{}, size) = ", name).as_bytes())?;
         match t {
             Types::Array(t) => {
@@ -251,7 +251,7 @@ fn generate_dictionary_deserialisaion(
         file.write(b"\n  offset += size\n")?;
     }
 	file.write(b"  ((\n")?;
-	for (name, _, _) in s.fields() {
+	for (name, _, _) in s.iter() {
 		file.write(format!("    {}: f_{},\n", name, name).as_bytes())?;
 	}
     file.write(b"  ), offset)\n}\n")?;

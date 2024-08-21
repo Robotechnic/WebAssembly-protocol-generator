@@ -59,9 +59,13 @@ impl<'a> Struct<'a> {
         &self.type_
     }
 
-    pub fn fields(&self) -> std::slice::Iter<(&'a str, Types, pest::Span<'a>)> {
+    pub fn iter(&self) -> std::slice::Iter<(&'a str, Types, pest::Span<'a>)> {
         self.fields.iter()
     }
+
+	pub fn fields(&self) -> &Vec<(&'a str, Types, pest::Span<'a>)> {
+		&self.fields
+	}
 
 	pub fn get_pos(&self) -> pest::Span<'a> {
 		self.pos
