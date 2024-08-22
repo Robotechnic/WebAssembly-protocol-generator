@@ -24,6 +24,7 @@ impl<'a> Default for Protocol<'a> {
 }
 
 impl<'a> Protocol<'a> {
+	/// Check for circular dependencies in the structs children types
 	fn check_circular_dependencies(&self, struct_: &Struct<'a>, parents: &HashSet<&str>) -> Result<(), (String, Span<'a>)> {
 		for (_, t, pos) in struct_.iter() {
 			match t {
@@ -88,6 +89,32 @@ impl<'a> Protocol<'a> {
 		Ok(())
     }
 
+	fn update_children_encoding_type(&mut self, name: &str) {
+		let structs = self.structs.get(name).unwrap();
+		let encoder = structs.encoder;
+		let decoder = structs.decoder;
+		let structs = structs.iter().filter(|(_, t, _)| t.is_struct()).map(|(_, t, _)| t.clone()).collect::<Vec<_>>();
+		for t in structs {
+			match t {
+				Types::Struct(name) => {
+					let s = self.structs.get_mut(name.as_str()).unwrap();
+					s.encoder |= encoder;
+					s.decoder |= decoder;
+					self.update_children_encoding_type(name.as_str());
+				}
+				Types::Array(t) => {
+					if let Types::Struct(name) = t.as_ref() {
+						let s = self.structs.get_mut(name.as_str()).unwrap();
+						s.encoder |= encoder;
+						s.decoder |= decoder;
+						self.update_children_encoding_type(name.as_str());
+					}
+				}
+				_ => {}
+			}
+		}
+	}
+
 	/// Check the protocol type and set the encoding type of the struct accordingly
     fn set_struct_encoding_type(&mut self, name: &String, pos: &Span<'a>, parent_protocol: &Struct<'a>) -> Result<(), (String, Span<'a>)> {
         if !self.structs.contains_key(name.as_str()) {
@@ -109,6 +136,7 @@ impl<'a> Protocol<'a> {
 					s.decoder = true;
 				}
 			}
+			self.update_children_encoding_type(name);
 		} else {
 			unreachable!();
 		}
@@ -136,7 +164,7 @@ impl<'a> Debug for Protocol<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Protocol {{")?;
         for (name, struct_) in &self.structs {
-            write!(f, "\n{}: {:?}", name, struct_)?;
+            write!(f, "\n{}: {:?} ({},{})", name, struct_, struct_.encoder, struct_.decoder)?;
         }
         for (name, protocol) in &self.protocols {
             write!(f, "\n{}: {:?}", name, protocol)?;

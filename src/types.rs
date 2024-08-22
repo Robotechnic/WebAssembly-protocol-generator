@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 /// Represents the different types that can be used in the protocol
+#[derive(Clone)]
 pub enum Types {
     Int,
     Float,
@@ -24,6 +25,15 @@ impl Types {
             _ => Types::Struct(type_str.to_string()),
         }
     }
+
+	/// Check if the type is a struct or an array of structs
+	pub fn is_struct(&self) -> bool {
+		match self {
+			Types::Struct(_) => true,
+			Types::Array(t) => t.is_struct(),
+			_ => false,
+		}
+	}
 
     pub fn to_c(&self) -> String {
         match self {
