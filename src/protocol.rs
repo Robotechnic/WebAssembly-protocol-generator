@@ -10,6 +10,7 @@ use crate::{
 
 /// A struct that contains all the structs and protocols defined in the protocol file
 pub struct Protocol<'a> {
+	structs_order: Vec<&'a str>,
     structs: HashMap<&'a str, Struct<'a>>,
     protocols: HashMap<&'a str, Struct<'a>>,
 }
@@ -17,6 +18,7 @@ pub struct Protocol<'a> {
 impl<'a> Default for Protocol<'a> {
     fn default() -> Protocol<'a> {
         Protocol {
+			structs_order: Vec::new(),
             structs: HashMap::new(),
             protocols: HashMap::new(),
         }
@@ -67,6 +69,7 @@ impl<'a> Protocol<'a> {
 		set.insert(name);
 		self.check_circular_dependencies(&struct_, &set)?;
         self.structs.insert(name, struct_);
+		self.structs_order.push(name);
 		Ok(())
     }
 
@@ -154,6 +157,10 @@ impl<'a> Protocol<'a> {
     pub fn structs(&self) -> std::collections::hash_map::Iter<'_, &str, Struct<'a>> {
         self.structs.iter()
     }
+
+	pub fn ordered_structs(&self) -> impl Iterator<Item = (&'a str, &Struct<'a>)> {
+		self.structs_order.iter().map(|name| (*name, self.structs.get(name).unwrap()))
+	}
 
     pub fn protocols(&self) -> std::collections::hash_map::Iter<'_, &str, Struct<'a>> {
         self.protocols.iter()

@@ -173,6 +173,9 @@ size_t char_size(const void *elem) {
     return 1;
 }
 size_t string_size(const void *elem) {
+    if (!elem || !((char *)elem)[0]) {
+        return 1;
+    }
     return strlen((char *)elem) + 1;
 }
 
@@ -393,7 +396,7 @@ fn generate_type_size(
             file.write(b"1")?;
         }
         Types::String => {
-            file.write(format!("strlen((({}*)s)->{}) + 1",name, field_name).as_bytes())?;
+            file.write(format!("string_size((({}*)s)->{})",name, field_name).as_bytes())?;
         }
         Types::Struct(_) => {
             file.write(format!("{}_size((({}*)s)->{})", t.to_c(), name, field_name).as_bytes())?;
@@ -609,7 +612,7 @@ pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error>
     let mut h_file = fs::File::create(h_path)?;
     generate_header(&mut h_file)?;
     c_file.write(C.as_bytes())?;
-    for (name, s) in p.structs() {
+    for (name, s) in p.ordered_structs() {
         generate(&mut h_file, &mut c_file, name, s)?;
     }
     for (name, s) in p.protocols() {

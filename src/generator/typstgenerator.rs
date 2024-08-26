@@ -271,7 +271,7 @@ pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error>
     let path = format!("{}/protocol.typ", path);
     let mut file = fs::File::create(path)?;
     generate_header(&mut file)?;
-    for (name, s) in p.structs() {
+    for (name, s) in p.ordered_structs() {
         generate(&mut file, name, s)?;
     }
     for (name, s) in p.protocols() {
