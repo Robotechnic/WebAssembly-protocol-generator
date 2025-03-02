@@ -43,35 +43,27 @@ impl<'a> Protocol<'a> {
 						self.check_circular_dependencies(s, &parents)?;
 					}
 				}
-				Types::Array(t) => {
-					if let Types::Struct(name) = t.as_ref() {
-						if parents.contains(name.as_str()) {
-							return Err((
-								format!("Circular dependency detected: {} is its own parent", name),
-								pos.clone()
-							))
-						}
-						if let Some(s) = self.structs.get(name.as_str()) {
-							let mut parents = parents.clone();
-							parents.insert(name.as_str());
-							self.check_circular_dependencies(s, &parents)?;
-						}
-					}
-				}
 				_ => {}
 			}
 		}
 		Ok(())
+	}
+	
+	pub fn pre_add_struct(&mut self, name: &'a str, struct_type : StructType, pos: pest::Span<'a>) {
+		self.structs.insert(name, Struct::new(struct_type, pos));
+		self.structs_order.push(name);
 	}
 
     pub fn add_struct(&mut self, name: &'a str, struct_: Struct<'a>) -> Result<(), (String, Span<'a>)> {
 		let mut set = HashSet::new();
 		set.insert(name);
 		self.check_circular_dependencies(&struct_, &set)?;
-        self.structs.insert(name, struct_);
-		self.structs_order.push(name);
+        if self.structs.insert(name, struct_).is_none() {
+			self.structs_order.push(name);
+		}
 		Ok(())
     }
+
 
 	/// Add a new protocol to the program
     pub fn add_protocol(&mut self, name: &'a str, protocol: Struct<'a>) -> Result<(), (String, Span<'a>)> {

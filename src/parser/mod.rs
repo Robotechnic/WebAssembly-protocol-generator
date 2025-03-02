@@ -80,6 +80,7 @@ impl ProtocolParser {
                     Rule::STRUCT_DEF => {
                         let mut struct_def = declarations.into_inner();
                         let name = struct_def.next().unwrap().as_str();
+						protocol.pre_add_struct(name, StructType::Struct, pos);
                         protocol.add_struct(
                             name,
                             parse_fields(struct_def.next().unwrap(), StructType::Struct, &protocol, pos)?,
