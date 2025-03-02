@@ -1,6 +1,6 @@
 [package]
 name = "wasmpg"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Robotechnic <@Robotechnic>"]
 edition = "2021"
 description = "An utility script to generate the necessary code to easily use the WebAssembly minimal protocol of typst"
