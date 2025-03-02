@@ -93,16 +93,20 @@ impl<'a> Protocol<'a> {
 			match t {
 				Types::Struct(name) => {
 					let s = self.structs.get_mut(name.as_str()).unwrap();
-					s.encoder |= encoder;
-					s.decoder |= decoder;
-					self.update_children_encoding_type(name.as_str());
+					if s.encoder != encoder || s.decoder != decoder {
+						s.encoder |= encoder;
+						s.decoder |= decoder;
+						self.update_children_encoding_type(name.as_str());
+					}
 				}
 				Types::Array(t) => {
 					if let Types::Struct(name) = t.as_ref() {
 						let s = self.structs.get_mut(name.as_str()).unwrap();
-						s.encoder |= encoder;
-						s.decoder |= decoder;
-						self.update_children_encoding_type(name.as_str());
+						if s.encoder != encoder || s.decoder != decoder {
+							s.encoder |= encoder;
+							s.decoder |= decoder;
+							self.update_children_encoding_type(name.as_str());
+						}
 					}
 				}
 				_ => {}
