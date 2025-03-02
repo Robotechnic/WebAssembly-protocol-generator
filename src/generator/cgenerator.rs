@@ -178,6 +178,13 @@ size_t string_size(const void *elem) {
     }
     return strlen((char *)elem) + 1;
 }
+size_t string_list_size(char **list, size_t size) {
+	size_t result = 0;
+	for (size_t i = 0; i < size; i++) {
+		result += string_size(list[i]);
+	}
+	return result;
+}
 
 ";
 
@@ -402,31 +409,41 @@ fn generate_type_size(
             file.write(format!("{}_size((({}*)s)->{})", t.to_c(), name, field_name).as_bytes())?;
         }
         Types::Array(t) => {
-            file.write(
-                format!(
-                    "TYPST_INT_SIZE + list_size((({}*)s)->{}, (({}*)s)->{}_len, ",
-                    name, field_name, name, field_name
-                )
-                .as_bytes(),
-            )?;
-            match t.as_ref() {
-                Types::Int | Types::Float | Types::Point => {
-                    file.write(b"int_size")?;
-                }
-                Types::Bool | Types::Char => {
-                    file.write(b"char_size")?;
-                }
-                Types::String => {
-                    file.write(b"string_size")?;
-                }
-                Types::Struct(name) => {
-                    file.write(format!("{}_size", name).as_bytes())?;
-                }
-                Types::Array(_) => {
-                    unimplemented!("Array of arrays not supported");
-                }
-            }
-            file.write(format!(", sizeof(*(({}*)s)->{}))", name, field_name).as_bytes())?;
+			if let Types::String = t.as_ref() {
+				file.write(
+					format!(
+						"TYPST_INT_SIZE + string_list_size((({}*)s)->{}, (({}*)s)->{}_len)",
+						name, field_name, name, field_name
+					)
+					.as_bytes(),
+				)?;
+			} else {
+				file.write(
+					format!(
+						"TYPST_INT_SIZE + list_size((({}*)s)->{}, (({}*)s)->{}_len, ",
+						name, field_name, name, field_name
+					)
+					.as_bytes(),
+				)?;
+				match t.as_ref() {
+					Types::Int | Types::Float | Types::Point => {
+						file.write(b"int_size")?;
+					}
+					Types::Bool | Types::Char => {
+						file.write(b"char_size")?;
+					}
+					Types::String => {
+						unreachable!("Array of strings are special cases");
+					}
+					Types::Struct(name) => {
+						file.write(format!("{}_size", name).as_bytes())?;
+					}
+					Types::Array(_) => {
+						unimplemented!("Array of arrays not supported");
+					}
+				}
+				file.write(format!(", sizeof(*(({}*)s)->{}))", name, field_name).as_bytes())?;
+			}
         }
     }
     Ok(())
