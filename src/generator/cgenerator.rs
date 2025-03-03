@@ -202,10 +202,10 @@ fn generate_footer(h_file: &mut fs::File) -> Result<(), std::io::Error> {
 
 /// Write a struct definition in the generated .h file
 fn generate_struct(h_file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
-    h_file.write(b"typedef struct {\n")?;
+    h_file.write(format!("typedef struct {}_t {{\n", name).as_bytes())?;
     for field in s.iter() {
-        h_file.write(format!("    {} {};\n", field.1.to_c(), field.0).as_bytes())?;
-        if let Types::Array(_) = field.1 {
+        h_file.write(format!("    {} {};\n", field.1.to_c(true), field.0).as_bytes())?;
+		if let Types::Array(_) = field.1 {
             h_file.write(format!("    size_t {}_len;\n", field.0).as_bytes())?;
         }
     }
@@ -246,7 +246,7 @@ fn generate_struct_field_free_body(
 			c_file.write(b"    }\n")?;
 		}
 		Types::Struct(_) => {
-			c_file.write(format!("    free_{}(&s->{});\n", t.to_c(), field_name).as_bytes())?;
+			c_file.write(format!("    free_{}(&s->{});\n", t.to_c(false), field_name).as_bytes())?;
 		}
 		Types::Array(t) => {
 			if need_free(t.as_ref()) {
@@ -321,7 +321,7 @@ fn generate_struct_decode_line(
 		Types::Array(t) => {
 			file.write(format!("    NEXT_INT(out->{}_len)\n", field_name).as_bytes())?;
 			file.write(format!("    if (out->{}_len == 0) {{\n        out->{} = NULL;\n    }} else {{\n", field_name, field_name).as_bytes())?;
-			file.write(format!("        out->{} = malloc(out->{}_len * sizeof({}));\n", field_name, field_name, t.to_c()).as_bytes())?;
+			file.write(format!("        out->{} = malloc(out->{}_len * sizeof({}));\n", field_name, field_name, t.to_c(false)).as_bytes())?;
 			file.write(format!("        if (!out->{}){{\n            return 1;\n        }}\n", field_name).as_bytes())?;
 			file.write(format!("        for (size_t i = 0; i < out->{}_len; i++) {{\n", field_name).as_bytes())?;
 			generate_struct_decode_line(file, &format!("{}[i]", field_name), t)?;
@@ -406,7 +406,7 @@ fn generate_type_size(
             file.write(format!("string_size((({}*)s)->{})",name, field_name).as_bytes())?;
         }
         Types::Struct(_) => {
-            file.write(format!("{}_size((({}*)s)->{})", t.to_c(), name, field_name).as_bytes())?;
+            file.write(format!("{}_size((void*)&(({}*)s)->{})", t.to_c(false), name, field_name).as_bytes())?;
         }
         Types::Array(t) => {
 			if let Types::String = t.as_ref() {

@@ -35,15 +35,19 @@ impl Types {
 		}
 	}
 
-    pub fn to_c(&self) -> String {
+    pub fn to_c(&self, in_struct: bool) -> String {
         match self {
             Types::Int => "int".to_string(),
             Types::Float | Types::Point => "float".to_string(),
             Types::Bool => "bool".to_string(),
             Types::Char => "char".to_string(),
             Types::String => "char*".to_string(),
-            Types::Array(t) => format!("{} *", t.to_c()),
-            Types::Struct(name) => name.to_string(),
+            Types::Array(t) => format!("{} *", t.to_c(in_struct)),
+            Types::Struct(name) => if in_struct {
+				format!("struct {}_t", name)
+			} else {
+				name.to_string()
+			}
         }
     }
 
