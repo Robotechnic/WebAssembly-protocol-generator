@@ -18,6 +18,9 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
   for byte in array(bytes.slice(0,4)) {
     result = result * 256 + byte
   }
+  if (result > 2147483647) { // the number is negative
+    result = 2147483647 - result + 2147483647
+  }
   (result, 4)
 }
 
