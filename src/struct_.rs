@@ -59,7 +59,7 @@ impl<'a> Struct<'a> {
         &self.type_
     }
 
-    pub fn iter(&self) -> std::slice::Iter<(&'a str, Types, pest::Span<'a>)> {
+    pub fn iter<'b>(&'b self) -> std::slice::Iter<'b, (&'a str, Types, pest::Span<'a>)> {
         self.fields.iter()
     }
 

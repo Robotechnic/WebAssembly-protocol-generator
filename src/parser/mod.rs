@@ -10,7 +10,7 @@ use pest_derive::Parser;
 pub struct ProtocolParser;
 
 impl ProtocolParser {
-    pub fn parse_protocol(file: &str) -> Result<Protocol, Error<Rule>> {
+    pub fn parse_protocol<'a>(file: &'a str) -> Result<Protocol<'a>, Error<Rule>> {
         let protocol = ProtocolParser::parse(Rule::protocol, file)?.next().unwrap();
 
         use pest::iterators::Pair;
