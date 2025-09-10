@@ -77,6 +77,11 @@ impl<'a> Protocol<'a> {
 						self.set_struct_encoding_type(name, pos, &protocol)?;
 					}
 				}
+				Types::Optional(t) => {
+					if let Types::Struct(name) = t.as_ref() {
+						self.set_struct_encoding_type(name, pos, &protocol)?;
+					}
+				}
 				_ => {}
 			}
 		}
@@ -100,6 +105,16 @@ impl<'a> Protocol<'a> {
 					}
 				}
 				Types::Array(t) => {
+					if let Types::Struct(name) = t.as_ref() {
+						let s = self.structs.get_mut(name.as_str()).unwrap();
+						if s.encoder != encoder || s.decoder != decoder {
+							s.encoder |= encoder;
+							s.decoder |= decoder;
+							self.update_children_encoding_type(name.as_str());
+						}
+					}
+				}
+				Types::Optional(t) => {
 					if let Types::Struct(name) = t.as_ref() {
 						let s = self.structs.get_mut(name.as_str()).unwrap();
 						if s.encoder != encoder || s.decoder != decoder {

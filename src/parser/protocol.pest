@@ -6,8 +6,9 @@ FIELD_TYPE = {"int" | "float" | "string" | "bool" | "char" | "point"}
 LIST = {"[" ~ "]"}
 SEMICOLON = _{";"}
 STRUCT = _{"struct"}
+OPTIONAL = {"?"}
 
-FIELD = {(FIELD_TYPE | IDENT) ~ IDENT ~ LIST? ~ SEMICOLON}
+FIELD = {(FIELD_TYPE | IDENT) ~ OPTIONAL? ~ IDENT ~ LIST? ~ SEMICOLON}
 
 PROTOCOL = _{"protocol"}
 PROTOCOL_C = {"C"}

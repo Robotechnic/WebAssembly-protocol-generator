@@ -45,8 +45,25 @@ impl ProtocolParser {
                         ));
                     }
                 }
+                let optional = pair.peek().map_or(false, |p| p.as_rule() == Rule::OPTIONAL);
+                if optional {
+                    field_type = Types::Optional(Box::new(field_type));
+                    pair.next(); 
+                }
                 let name = pair.next().unwrap().as_str();
+
                 if let Some(_) = pair.next() {
+                    if optional {
+                        return Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: format!(
+                                    "Field \"{}\" cannot be both optional and a list",
+                                    name
+                                ),
+                            },
+                            pos,
+                        ));
+                    }
                     // we are in list mode
                     field_type = Types::Array(Box::new(field_type));
                 }

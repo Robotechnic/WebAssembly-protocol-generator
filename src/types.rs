@@ -10,6 +10,7 @@ pub enum Types {
     Char,
     String,
     Array(Box<Types>),
+    Optional(Box<Types>),
     Struct(String),
 }
 
@@ -31,6 +32,7 @@ impl Types {
 		match self {
 			Types::Struct(_) => true,
 			Types::Array(t) => t.is_struct(),
+            Types::Optional(t) => t.is_struct(),
 			_ => false,
 		}
 	}
@@ -48,6 +50,7 @@ impl Types {
 			} else {
 				name.to_string()
 			}
+            Types::Optional(t) => format!("{} *", t.to_c(in_struct)),
         }
     }
 
@@ -61,6 +64,7 @@ impl Types {
 			Types::String => "string".to_string(),
 			Types::Array(t) => format!("{}[]", t.to_typst()),
 			Types::Struct(name) => name.to_string(),
+            Types::Optional(t) => format!("{}", t.to_typst()),
 		}
 	}
 }
@@ -76,6 +80,7 @@ impl Debug for Types {
             Types::String => write!(f, "string"),
             Types::Array(t) => write!(f, "{:?}[]", t),
             Types::Struct(name) => write!(f, "{}", name),
+            Types::Optional(t) => write!(f, "{:?}?", t),
         }
     }
 }

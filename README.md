@@ -67,6 +67,10 @@ The following types are supported:
 
 Any of the previous types can be put in an array by adding `[]` after the field name.
 
+#### Optional fields
+
+Adding a `?` after the type will make the field optional. This means that the field may be present or not in the encoded protocol. This is only supported for non-array fields. On typst side this is translated by the field being `none` or having a value. On C side, the field will be a pointer to the type. If the pointer is `NULL`, the field is not present, otherwise it is present.
+
 ## Example
 
 ```c

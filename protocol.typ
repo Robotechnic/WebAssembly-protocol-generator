@@ -1,8 +1,4 @@
-use std::{fs, io::Write};
-
-use crate::{protocol::Protocol, struct_::Struct, types::Types};
-
-const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
+/// Encodes a 32-bytes integer into big-endian bytes.
 #let encode-int(value) = {
   bytes((
     calc.rem(calc.quo(value, 0x1000000), 0x100),
@@ -39,7 +35,7 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 		}
 	}
 	if length == 0 {
-		(\"\", 1)
+		("", 1)
 	} else { 
 		(str(bytes.slice(0, length - 1)), length)
 	}
@@ -205,114 +201,20 @@ const FILE_HEADER: &str = "/// Encodes a 32-bytes integer into big-endian bytes.
 		((none), 1)
 	}
 }
-";
-
-fn generate_header(file: &mut fs::File) -> Result<(), std::io::Error> {
-    file.write(FILE_HEADER.as_bytes())?;
-    Ok(())
+#let encode-B(value) = {
+  encode-list(value.at("b"), encode-B) + encode-bool(value.at("bidule"))
 }
-
-fn generate_dictionary_serialisation(
-    file: &mut fs::File,
-    name: &str,
-    s: &Struct,
-) -> Result<(), std::io::Error> {
-    file.write(format!("#let encode-{}(value) = {{\n", name).as_bytes())?;
-    file.write(b"  ")?;
-    let mut first = true;
-    for (name, t, _) in s.iter() {
-        if !first {
-            file.write(b" + ")?;
-        }
-        match t {
-            Types::Array(t) => {
-                file.write(
-                    format!("encode-list(value.at(\"{}\"), encode-{})", name, t.to_typst()).as_bytes(),
-                )?;
-            }
-			Types::Optional(t) => {
-				file.write(
-					format!("encode-optional(value.at(\"{}\", default: none), encode-{})", name, t.to_typst()).as_bytes(),
-				)?;
-			}
-            Types::Struct(t) => {
-                file.write(format!("encode-{}(value.at(\"{}\"))", t, name).as_bytes())?;
-            }
-            _ => {
-                file.write(format!("encode-{}(value.at(\"{}\"))", t.to_typst(), name).as_bytes())?;
-            }
-        }
-        first = false;
-    }
-    file.write(b"\n}\n")?;
-    Ok(())
+#let encode-Test(value) = {
+  encode-list(value.at("b"), encode-B)
 }
-
-fn generate_dictionary_deserialisaion(
-    file: &mut fs::File,
-    name: &str,
-    s: &Struct,
-) -> Result<(), std::io::Error> {
-    file.write(format!("#let decode-{}(bytes) = {{\n", name).as_bytes())?;
-    file.write(b"  let offset = 0\n")?;
-    for (name, t, _) in s.iter() {
-        file.write(format!("  let (f_{}, size) = ", name).as_bytes())?;
-        match t {
-            Types::Array(t) => {
-                file.write(
-                    format!(
-                        "decode-list(bytes.slice(offset, bytes.len()), decode-{})",
-                        t.to_typst()
-                    )
-                    .as_bytes(),
-                )?;
-            }
-			Types::Optional(t) => {
-				file.write(
-					format!(
-						"decode-optional(bytes.slice(offset, bytes.len()), decode-{})",
-						t.to_typst()
-					)
-					.as_bytes(),
-				)?;
-			}
-            Types::Struct(t) => {
-                file.write(format!("decode-{}(bytes.slice(offset, bytes.len()))", t).as_bytes())?;
-            }
-            _ => {
-                file.write(
-                    format!("decode-{}(bytes.slice(offset, bytes.len()))", t.to_typst()).as_bytes(),
-                )?;
-            }
-        }
-        file.write(b"\n  offset += size\n")?;
-    }
-	file.write(b"  ((\n")?;
-	for (name, _, _) in s.iter() {
-		file.write(format!("    {}: f_{},\n", name, name).as_bytes())?;
-	}
-    file.write(b"  ), offset)\n}\n")?;
-    Ok(())
-}
-
-fn generate(file: &mut fs::File, name: &str, s: &Struct) -> Result<(), std::io::Error> {
-    if s.decoder {
-        generate_dictionary_serialisation(file, name, s)?;
-    } else {
-        generate_dictionary_deserialisaion(file, name, s)?;
-    }
-    Ok(())
-}
-
-pub fn generate_protocol(path: &str, p: &Protocol) -> Result<(), std::io::Error> {
-    let path = format!("{}/protocol.typ", path);
-    let mut file = fs::File::create(path)?;
-    generate_header(&mut file)?;
-    for (name, s) in p.ordered_structs() {
-        generate(&mut file, name, s)?;
-    }
-    for (name, s) in p.protocols() {
-        generate(&mut file, name, s)?;
-    }
-    Ok(())
+#let decode-Essses(bytes) = {
+  let offset = 0
+  let (f_b, size) = decode-list(bytes.slice(offset, bytes.len()), decode-B)
+  offset += size
+  let (f_test, size) = decode-optional(bytes.slice(offset, bytes.len()), decode-string)
+  offset += size
+  ((
+    b: f_b,
+    test: f_test,
+  ), offset)
 }

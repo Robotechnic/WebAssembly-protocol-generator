@@ -18,6 +18,7 @@ const HEADER: &str = "#ifndef PROTOCOL_H
 PROTOCOL_FUNCTION void wasm_minimal_protocol_send_result_to_host(const uint8_t *ptr, size_t len);
 PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 
+typedef size_t (*size_function)(const void*);
 
 #define TYPST_INT_SIZE 4
 
@@ -154,12 +155,16 @@ void encode_float(float value, uint8_t *buffer) {
 	}
 }
 
-size_t list_size(void *list, size_t size, size_t (*sf)(const void*), size_t element_size) {
+size_t list_size(void *list, size_t size, size_function sf, size_t element_size) {
     size_t result = 0;
     for (int i = 0; i < size; i++) {
         result += sf(list + i * element_size);
     }
     return result;
+}
+
+size_t optional_size(void *opt, size_function sf) {
+    return 1 + (opt ? sf(opt) : 0);
 }
 
 size_t int_size(const void* elem) {
@@ -231,6 +236,7 @@ fn need_free(t: &Types) -> bool {
 		Types::String => true,
 		Types::Struct(_) => true,
 		Types::Array(t) => need_free(t.as_ref()),
+		Types::Optional(t) => need_free(t.as_ref()),
 		_ => false,
 	}
 }
@@ -258,6 +264,18 @@ fn generate_struct_field_free_body(
 			}
 			c_file.write(format!("    free(s->{});\n", field_name).as_bytes())?;
 		}
+        Types::Optional(t) => {
+            if need_free(t.as_ref()) {
+                c_file.write(format!("    if (s->{}) {{\n", field_name).as_bytes())?;
+                generate_struct_field_free_body(c_file, &format!("{}[0]", field_name), t.as_ref())?;
+                c_file.write(b"        free(s->")?; c_file.write(field_name.as_bytes())?; c_file.write(b");\n")?;
+                c_file.write(b"    }\n")?;
+            } else {
+                c_file.write(format!("    if (s->{}) {{\n", field_name).as_bytes())?;
+                c_file.write(format!("        free(s->{});\n", field_name).as_bytes())?;
+                c_file.write(b"    }\n")?;
+            }
+        }
 		_ => {}
 	}
 	Ok(())
@@ -330,6 +348,16 @@ fn generate_struct_decode_line(
 			file.write(b"        }\n")?;
 			file.write(b"    }\n")?;
 		}
+        Types::Optional(t) => {
+            file.write(format!("    bool has_{};\n", field_name).as_bytes())?;
+            file.write(format!("    NEXT_CHAR(has_{})\n", field_name).as_bytes())?;
+            file.write(format!("    if (has_{}) {{\n", field_name).as_bytes())?;
+            file.write(format!("        out->{} = malloc(sizeof({}));\n", field_name, t.to_c(false)).as_bytes())?;
+            generate_struct_decode_line(file, &format!("{}[0]", field_name), t)?;
+            file.write(b"    } else {\n")?;
+            file.write(format!("        out->{} = NULL;\n", field_name).as_bytes())?;
+            file.write(b"    }\n")?;
+        }
 	}
 	Ok(())
 }
@@ -443,9 +471,42 @@ fn generate_type_size(
 					Types::Array(_) => {
 						unimplemented!("Array of arrays not supported");
 					}
+                    Types::Optional(_) => {
+                        unreachable!("Array of optionals not supported");
+                    }
 				}
 				file.write(format!(", sizeof(*(({}*)s)->{}))", name, field_name).as_bytes())?;
 			}
+        }
+        Types::Optional(t) => {
+            file.write(
+                format!(
+                    "optional_size((({}*)s)->{}, ",
+                    name, field_name
+                )
+                .as_bytes(),
+            )?;
+            match t.as_ref() {
+                Types::Int | Types::Float | Types::Point => {
+                    file.write(b"int_size")?;
+                }
+                Types::Bool | Types::Char => {
+                    file.write(b"char_size")?;
+                }
+                Types::String => {
+                    file.write(b"string_size")?;
+                }
+                Types::Struct(name) => {
+                    file.write(format!("{}_size", name).as_bytes())?;
+                }
+                Types::Array(_) => {
+                    unimplemented!("Optional of arrays not supported");
+                }
+                Types::Optional(_) => {
+                    unreachable!("Optional of optionals not supported");
+                }
+            }
+            file.write(b")")?;
         }
     }
     Ok(())
@@ -526,6 +587,9 @@ fn generate_struct_encode_function_encode_line(
                 Types::Array(_) => {
                     unreachable!("Array of arrays not supported");
                 }
+                Types::Optional(_) => {
+                    unreachable!("Array of optionals not supported");
+                }
                 _ => {
                     generate_struct_encode_function_encode_line(
                         file,
@@ -536,6 +600,17 @@ fn generate_struct_encode_function_encode_line(
                 }
             }
 			file.write(b"    }\n")?;
+        }
+        Types::Optional(t) => {
+            file.write(format!("    CHAR_PACK(s->{} != NULL)\n", field_name).as_bytes())?;
+            file.write(format!("    if (s->{}) {{\n", field_name).as_bytes())?;
+            generate_struct_encode_function_encode_line(
+                file,
+                &format!("{}[0]", field_name),
+                t,
+                is_struct,
+            )?;
+            file.write(b"    }\n")?;
         }
     }
     Ok(())
